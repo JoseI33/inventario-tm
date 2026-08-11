@@ -1,38 +1,38 @@
 import { useState } from "react";
 import "./App.css";
 
+import { equipos } from "./data/equipos";
+import { services } from "./data/services";
+import { filtros } from "./data/filtros";
+
 function App() {
   const [modulo, setModulo] = useState("inicio");
   const [interno, setInterno] = useState("");
 
-  const equipoEjemplo = {
-    interno: "62",
-    equipo: "Autoelevador",
-    marca: "Mitsubishi",
-    horometroActual: 4860,
-    ultimoService: 4600,
-    frecuenciaService: 300,
-    filtros: [
-      { tipo: "Aceite motor", codigo: "H2015", cambio: "Cada service" },
-      { tipo: "Combustible", codigo: "WK940/18", cambio: "Cada service" },
-      { tipo: "Aire primario", codigo: "P181186", cambio: "Cada service" },
-      { tipo: "Aire secundario", codigo: "P181187", cambio: "Cada 600 hs" },
-      {
-        tipo: "Combustible eléctrico",
-        codigo: "DBH-5062",
-        cambio: "Según equipo",
-      },
-    ],
-  };
+  const equipoSeleccionado = equipos.find(
+    (equipo) => equipo.interno === interno,
+  );
 
-  const horasUsadas =
-    equipoEjemplo.horometroActual - equipoEjemplo.ultimoService;
+  const ultimoService = services
+    .filter(
+      (service) => service.interno === interno && service.tipo === "Motor",
+    )
+    .sort((a, b) => b.horometro - a.horometro)[0];
 
-  const proximoService =
-    equipoEjemplo.ultimoService + equipoEjemplo.frecuenciaService;
+  const filtrosEquipo = filtros.filter((filtro) => filtro.interno === interno);
 
-  const horasRestantes =
-    proximoService - equipoEjemplo.horometroActual;
+  let horasUsadas = 0;
+  let proximoService = 0;
+  let horasRestantes = 0;
+
+  if (equipoSeleccionado && ultimoService) {
+    horasUsadas = equipoSeleccionado.horometroActual - ultimoService.horometro;
+
+    proximoService =
+      ultimoService.horometro + equipoSeleccionado.frecuenciaService;
+
+    horasRestantes = proximoService - equipoSeleccionado.horometroActual;
+  }
 
   const obtenerEstado = () => {
     if (horasRestantes <= 0) return "Service vencido";
@@ -69,10 +69,7 @@ function App() {
 
           <h2>Buscador de inventario</h2>
 
-          <input
-            type="text"
-            placeholder="Ubicación, código o repuesto..."
-          />
+          <input type="text" placeholder="Ubicación, código o repuesto..." />
 
           <p className="mensaje">
             En el próximo paso conectaremos aquí el inventario real.
@@ -81,76 +78,111 @@ function App() {
       )}
 
       {modulo === "equipos" && (
-        <main className="panel">
-          <button className="volver" onClick={() => setModulo("inicio")}>
-            ← Volver
-          </button>
+  <main className="panel">
+    <button
+      className="volver"
+      onClick={() => setModulo("inicio")}
+    >
+      ← Volver
+    </button>
 
-          <h2>Equipos / Mantenimiento</h2>
+    <h2>Equipos / Mantenimiento</h2>
 
-          <input
-            type="text"
-            placeholder="Ingresar interno..."
-            value={interno}
-            onChange={(e) => setInterno(e.target.value)}
-          />
+    <input
+      type="text"
+      placeholder="Ingresar interno..."
+      value={interno}
+      onChange={(e) => setInterno(e.target.value)}
+    />
 
-          {interno === "62" && (
-            <div className="ficha">
-              <h2>Interno {equipoEjemplo.interno}</h2>
+    {interno && !equipoSeleccionado && (
+      <p>No se encontró el interno {interno}.</p>
+    )}
 
-              <p>
-                <strong>Equipo:</strong> {equipoEjemplo.equipo}
-              </p>
+    {equipoSeleccionado && ultimoService && (
+      <div className="ficha">
 
-              <p>
-                <strong>Marca:</strong> {equipoEjemplo.marca}
-              </p>
+        <h2>
+          Interno {equipoSeleccionado.interno}
+        </h2>
 
-              <p>
-                <strong>Horómetro actual:</strong>{" "}
-                {equipoEjemplo.horometroActual} hs
-              </p>
+        <p>
+          <strong>Equipo:</strong>{" "}
+          {equipoSeleccionado.tipo}
+        </p>
 
-              <hr />
+        <p>
+          <strong>Marca:</strong>{" "}
+          {equipoSeleccionado.marca}
+        </p>
 
-              <h3>Service de motor</h3>
+        <p>
+          <strong>Horómetro actual:</strong>{" "}
+          {equipoSeleccionado.horometroActual} hs
+        </p>
 
-              <p>
-                Último service: {equipoEjemplo.ultimoService} hs
-              </p>
+        <hr />
 
-              <p>
-                Horas utilizadas: {horasUsadas} hs
-              </p>
+        <h3>Service de motor</h3>
 
-              <p>
-                Próximo service: {proximoService} hs
-              </p>
+        <p>
+          <strong>Último service:</strong>{" "}
+          {ultimoService.horometro} hs
+        </p>
 
-              <p>
-                Horas restantes: {horasRestantes} hs
-              </p>
+        <p>
+          <strong>Horas utilizadas:</strong>{" "}
+          {horasUsadas} hs
+        </p>
 
-              <div className={`estado ${obtenerEstado().replaceAll(" ", "-")}`}>
-                {obtenerEstado()}
-              </div>
+        <p>
+          <strong>Próximo service:</strong>{" "}
+          {proximoService} hs
+        </p>
 
-              <hr />
+        <p>
+          <strong>Horas restantes:</strong>{" "}
+          {horasRestantes} hs
+        </p>
 
-              <h3>Filtros</h3>
+        <div
+          className={`estado ${obtenerEstado().replaceAll(
+            " ",
+            "-"
+          )}`}
+        >
+          {obtenerEstado()}
+        </div>
 
-              {equipoEjemplo.filtros.map((filtro) => (
-                <div className="filtro" key={filtro.tipo}>
-                  <strong>{filtro.tipo}</strong>
-                  <span>{filtro.codigo}</span>
-                  <small>{filtro.cambio}</small>
-                </div>
-              ))}
+        <hr />
+
+        <h3>Filtros</h3>
+
+        {filtrosEquipo.length > 0 ? (
+          filtrosEquipo.map((filtro) => (
+            <div
+              className="filtro"
+              key={`${filtro.interno}-${filtro.tipo}`}
+            >
+              <strong>{filtro.tipo}</strong>
+
+              <span>{filtro.codigo}</span>
+
+              <small>
+                Cada {filtro.frecuenciaHoras} hs
+              </small>
             </div>
-          )}
-        </main>
-      )}
+          ))
+        ) : (
+          <p>
+            No hay filtros registrados para este equipo.
+          </p>
+        )}
+
+      </div>
+    )}
+  </main>
+)}
     </div>
   );
 }
