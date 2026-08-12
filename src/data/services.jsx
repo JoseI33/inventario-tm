@@ -8,7 +8,7 @@ export const services = [
   {
     interno: "133",
     fecha: "07-08-2026",
-    horometro: 18751,
+    horometro: 18483,
     tipo: "Motor",
   },
 ];
