@@ -1,17 +1,45 @@
 import { useState } from "react";
 import "./App.css";
-
-import { equipos } from "./data/equipos";
+import { useEffect } from "react";
 import { services } from "./data/services";
 import { filtros } from "./data/filtros";
 
 function App() {
+  const [equipos, setEquipos] = useState([]);
+
+useEffect(() => {
+  console.log("Intentando conectar con API...");
+
+  fetch("http://localhost:3000/equipos")
+    .then((response) => {
+      console.log("Respuesta API:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+
+      return response.json();
+    })
+    .then((data) => {
+      console.log("Equipos recibidos:", data);
+      setEquipos(data);
+    })
+    .catch((error) => {
+      console.error("Error al cargar equipos:", error);
+    });
+}, []);
+
   const [modulo, setModulo] = useState("inicio");
   const [interno, setInterno] = useState("");
 
   const equipoSeleccionado = equipos.find(
-    (equipo) => equipo.interno === interno,
+  (equipo) =>
+    String(equipo.interno).trim() === String(interno).trim()
   );
+
+  console.log("interno buscado:", interno);
+console.log("equipos:", equipos);
+console.log("equipo encontrado:", equipoSeleccionado);
 
   const ultimoService = services
     .filter(
@@ -26,12 +54,12 @@ function App() {
   let horasRestantes = 0;
 
   if (equipoSeleccionado && ultimoService) {
-    horasUsadas = equipoSeleccionado.horometroActual - ultimoService.horometro;
+    horasUsadas = equipoSeleccionado.horometro_actual - ultimoService.horometro;
 
     proximoService =
-      ultimoService.horometro + equipoSeleccionado.frecuenciaService;
+      ultimoService.horometro + equipoSeleccionado.frecuencia_service;
 
-    horasRestantes = proximoService - equipoSeleccionado.horometroActual;
+    horasRestantes = proximoService - equipoSeleccionado.horometro_actual;
   }
 
   const obtenerEstado = () => {
@@ -99,7 +127,7 @@ function App() {
       <p>No se encontró el interno {interno}.</p>
     )}
 
-    {equipoSeleccionado && ultimoService && (
+    {equipoSeleccionado && (
       <div className="ficha">
 
         <h2>
@@ -118,12 +146,15 @@ function App() {
 
         <p>
           <strong>Horómetro actual:</strong>{" "}
-          {equipoSeleccionado.horometroActual} hs
+          {equipoSeleccionado.horometro_actual} hs
         </p>
 
         <hr />
 
         <h3>Service de motor</h3>
+
+        {ultimoService ? (
+          <>
 
         <p>
           <strong>Último service:</strong>{" "}
@@ -149,12 +180,14 @@ function App() {
           className={`estado ${obtenerEstado().replaceAll(
             " ",
             "-"
-          )}`}
-        >
+            )}`}
+            >
           {obtenerEstado()}
         </div>
-
+        </>
+        ) : ( 
         <hr />
+      )}
 
         <h3>Filtros</h3>
 
