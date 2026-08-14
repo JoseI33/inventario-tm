@@ -1,3 +1,5 @@
+/* esLint-env node */
+
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
@@ -6,7 +8,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.put("/equipos/:interno/horometro", ...)
+app.put("/equipos/:interno/horometro")
 
 app.get("/", (req, res) => {
   res.send("API TM ROLDAN funcionando");
