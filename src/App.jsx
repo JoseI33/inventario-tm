@@ -1,45 +1,43 @@
 import { useState } from "react";
 import "./App.css";
 import { useEffect } from "react";
-import { services } from "./data/services";
 import { filtros } from "./data/filtros";
 
 function App() {
+  const [fechaHorometro, setFechaHorometro] = useState("");
+
+  const [nuevoHorometro, setNuevoHorometro] = useState("");
+  const [mensajeHorometro, setMensajeHorometro] = useState("");
+
+  const [services, setServices] = useState([]);
   const [equipos, setEquipos] = useState([]);
 
-useEffect(() => {
-  console.log("Intentando conectar con API...");
+  useEffect(() => {
+    fetch("http://localhost:3000/equipos")
+      .then((response) => response.json())
+      .then((data) => {
+        setEquipos(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar equipos:", error);
+      });
 
-  fetch("http://localhost:3000/equipos")
-    .then((response) => {
-      console.log("Respuesta API:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
-
-      return response.json();
-    })
-    .then((data) => {
-      console.log("Equipos recibidos:", data);
-      setEquipos(data);
-    })
-    .catch((error) => {
-      console.error("Error al cargar equipos:", error);
-    });
-}, []);
+    fetch("http://localhost:3000/services")
+      .then((response) => response.json())
+      .then((data) => {
+        setServices(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar services:", error);
+      });
+  }, []);
 
   const [modulo, setModulo] = useState("inicio");
   const [interno, setInterno] = useState("");
 
   const equipoSeleccionado = equipos.find(
-  (equipo) =>
-    String(equipo.interno).trim() === String(interno).trim()
+    (equipo) => String(equipo.interno).trim() === String(interno).trim(),
   );
-
-  console.log("interno buscado:", interno);
-console.log("equipos:", equipos);
-console.log("equipo encontrado:", equipoSeleccionado);
 
   const ultimoService = services
     .filter(
@@ -66,6 +64,55 @@ console.log("equipo encontrado:", equipoSeleccionado);
     if (horasRestantes <= 0) return "Service vencido";
     if (horasRestantes <= 50) return "Próximo a service";
     return "OK";
+  };
+
+  const actualizarHorometro = async () => {
+    if (!equipoSeleccionado) return;
+
+    if (!nuevoHorometro) {
+      setMensajeHorometro("Ingresá un horómetro.");
+      return;
+    }
+
+    if (!nuevoHorometro || !fechaHorometro) {
+  setMensajeHorometro("Ingresá la fecha y el horómetro.");
+  return;
+}
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/equipos/${equipoSeleccionado.interno}/horometro`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+  horometro: Number(nuevoHorometro),
+  fecha: fechaHorometro,
+}),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeHorometro(data.error);
+        return;
+      }
+
+      setEquipos((equiposActuales) =>
+        equiposActuales.map((equipo) =>
+          equipo.interno === data.interno ? data : equipo,
+        ),
+      );
+
+      setNuevoHorometro("");
+      setMensajeHorometro("Horómetro actualizado correctamente.");
+    } catch (error) {
+      console.error(error);
+      setMensajeHorometro("No se pudo actualizar el horómetro.");
+    }
   };
 
   return (
@@ -106,116 +153,116 @@ console.log("equipo encontrado:", equipoSeleccionado);
       )}
 
       {modulo === "equipos" && (
-  <main className="panel">
-    <button
-      className="volver"
-      onClick={() => setModulo("inicio")}
-    >
-      ← Volver
-    </button>
+        <main className="panel">
+          <button className="volver" onClick={() => setModulo("inicio")}>
+            ← Volver
+          </button>
 
-    <h2>Equipos / Mantenimiento</h2>
+          <h2>Equipos / Mantenimiento</h2>
 
-    <input
-      type="text"
-      placeholder="Ingresar interno..."
-      value={interno}
-      onChange={(e) => setInterno(e.target.value)}
-    />
+          <input
+            type="text"
+            placeholder="Ingresar interno..."
+            value={interno}
+            onChange={(e) => setInterno(e.target.value)}
+          />
 
-    {interno && !equipoSeleccionado && (
-      <p>No se encontró el interno {interno}.</p>
-    )}
+          {interno && !equipoSeleccionado && (
+            <p>No se encontró el interno {interno}.</p>
+          )}
 
-    {equipoSeleccionado && (
-      <div className="ficha">
+          {equipoSeleccionado && (
+            <div className="ficha">
+              <h2>Interno {equipoSeleccionado.interno}</h2>
 
-        <h2>
-          Interno {equipoSeleccionado.interno}
-        </h2>
+              <p>
+                <strong>Equipo:</strong> {equipoSeleccionado.tipo}
+              </p>
 
-        <p>
-          <strong>Equipo:</strong>{" "}
-          {equipoSeleccionado.tipo}
-        </p>
+              <p>
+                <strong>Marca:</strong> {equipoSeleccionado.marca}
+              </p>
 
-        <p>
-          <strong>Marca:</strong>{" "}
-          {equipoSeleccionado.marca}
-        </p>
+              <p>
+                <strong>Horómetro actual:</strong>{" "}
+                {equipoSeleccionado.horometro_actual} hs
+              </p>
 
-        <p>
-          <strong>Horómetro actual:</strong>{" "}
-          {equipoSeleccionado.horometro_actual} hs
-        </p>
+              <div className="actualizar-horometro">
+                <h3>Actualizar horómetro</h3>
 
-        <hr />
+                <input
+                  type="date"
+                  value={fechaHorometro}
+                  onChange={(e) => setFechaHorometro(e.target.value)}
+                />
 
-        <h3>Service de motor</h3>
+                <input
+                  type="number"
+                  placeholder="Nuevo horómetro"
+                  value={nuevoHorometro}
+                  onChange={(e) => setNuevoHorometro(e.target.value)}
+                />
 
-        {ultimoService ? (
-          <>
+                <button onClick={actualizarHorometro}>Guardar horómetro</button>
 
-        <p>
-          <strong>Último service:</strong>{" "}
-          {ultimoService.horometro} hs
-        </p>
+                {mensajeHorometro && <p>{mensajeHorometro}</p>}
+              </div>
+              <hr />
 
-        <p>
-          <strong>Horas utilizadas:</strong>{" "}
-          {horasUsadas} hs
-        </p>
+              <h3>Service de motor</h3>
 
-        <p>
-          <strong>Próximo service:</strong>{" "}
-          {proximoService} hs
-        </p>
+              {ultimoService ? (
+                <>
+                  <p>
+                    <strong>Último service:</strong> {ultimoService.horometro}{" "}
+                    hs
+                  </p>
 
-        <p>
-          <strong>Horas restantes:</strong>{" "}
-          {horasRestantes} hs
-        </p>
+                  <p>
+                    <strong>Horas utilizadas:</strong> {horasUsadas} hs
+                  </p>
 
-        <div
-          className={`estado ${obtenerEstado().replaceAll(
-            " ",
-            "-"
-            )}`}
-            >
-          {obtenerEstado()}
-        </div>
-        </>
-        ) : ( 
-        <hr />
-      )}
+                  <p>
+                    <strong>Próximo service:</strong> {proximoService} hs
+                  </p>
 
-        <h3>Filtros</h3>
+                  <p>
+                    <strong>Horas restantes:</strong> {horasRestantes} hs
+                  </p>
 
-        {filtrosEquipo.length > 0 ? (
-          filtrosEquipo.map((filtro) => (
-            <div
-              className="filtro"
-              key={`${filtro.interno}-${filtro.tipo}`}
-            >
-              <strong>{filtro.tipo}</strong>
+                  <div
+                    className={`estado ${obtenerEstado().replaceAll(" ", "-")}`}
+                  >
+                    {obtenerEstado()}
+                  </div>
+                </>
+              ) : (
+                <hr />
+              )}
 
-              <span>{filtro.codigo}</span>
+              <h3>Filtros</h3>
 
-              <small>
-                Cada {filtro.frecuenciaHoras} hs
-              </small>
+              {filtrosEquipo.length > 0 ? (
+                filtrosEquipo.map((filtro) => (
+                  <div
+                    className="filtro"
+                    key={`${filtro.interno}-${filtro.tipo}`}
+                  >
+                    <strong>{filtro.tipo}</strong>
+
+                    <span>{filtro.codigo}</span>
+
+                    <small>Cada {filtro.frecuenciaHoras} hs</small>
+                  </div>
+                ))
+              ) : (
+                <p>No hay filtros registrados para este equipo.</p>
+              )}
             </div>
-          ))
-        ) : (
-          <p>
-            No hay filtros registrados para este equipo.
-          </p>
-        )}
-
-      </div>
-    )}
-  </main>
-)}
+          )}
+        </main>
+      )}
     </div>
   );
 }
