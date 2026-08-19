@@ -4,6 +4,21 @@ import { useEffect } from "react";
 import { filtros } from "./data/filtros";
 
 function App() {
+  const [equiposActivos, setEquiposActivos] = useState([]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/equipos-activos")
+      .then((response) => response.json())
+      .then((data) => {
+        setEquiposActivos(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar equipos activos:", error);
+      });
+  }, []);
+
+  const [historialHorometros, setHistorialHorometros] = useState([]);
+
   const [fechaHorometro, setFechaHorometro] = useState("");
 
   const [nuevoHorometro, setNuevoHorometro] = useState("");
@@ -34,6 +49,20 @@ function App() {
 
   const [modulo, setModulo] = useState("inicio");
   const [interno, setInterno] = useState("");
+
+  useEffect(() => {
+    if (!interno) return;
+
+    fetch(`http://localhost:3000/equipos/${interno}/horometros`)
+      .then((response) => response.json())
+      .then((data) => {
+        setHistorialHorometros(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar historial:", error);
+        setHistorialHorometros([]);
+      });
+  }, [interno]);
 
   const equipoSeleccionado = equipos.find(
     (equipo) => String(equipo.interno).trim() === String(interno).trim(),
@@ -75,9 +104,9 @@ function App() {
     }
 
     if (!nuevoHorometro || !fechaHorometro) {
-  setMensajeHorometro("Ingresá la fecha y el horómetro.");
-  return;
-}
+      setMensajeHorometro("Ingresá la fecha y el horómetro.");
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -88,9 +117,9 @@ function App() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-  horometro: Number(nuevoHorometro),
-  fecha: fechaHorometro,
-}),
+            horometro: Number(nuevoHorometro),
+            fecha: fechaHorometro,
+          }),
         },
       );
 
@@ -106,6 +135,14 @@ function App() {
           equipo.interno === data.interno ? data : equipo,
         ),
       );
+
+      const historialResponse = await fetch(
+        `http://localhost:3000/equipos/${equipoSeleccionado.interno}/horometros`,
+      );
+
+      const historialData = await historialResponse.json();
+
+      setHistorialHorometros(historialData);
 
       setNuevoHorometro("");
       setMensajeHorometro("Horómetro actualizado correctamente.");
@@ -133,6 +170,10 @@ function App() {
             <h2>Equipos</h2>
             <p>Horómetros, services y filtros.</p>
           </button>
+          <button className="card" onClick={() => setModulo("equipos-activos")}>
+            <h2>Equipos activos</h2>
+            <p>Contratos, ubicaciones y últimas visitas.</p>
+          </button>
         </main>
       )}
 
@@ -152,6 +193,94 @@ function App() {
         </main>
       )}
 
+      {modulo === "equipos-activos" && (
+        <main className="panel">
+          <button className="volver" onClick={() => setModulo("inicio")}>
+            ← Volver
+          </button>
+
+          <h2>Equipos actualmente en actividad</h2>
+
+          <div className="tabla-contenedor">
+            <table className="tabla-equipos">
+              <thead>
+                <tr>
+                  <th>Interno</th>
+                  <th>Empresa</th>
+                  <th>Ubicación</th>
+                  <th>Inicio contrato</th>
+                  <th>Hs inicio</th>
+                  <th>Última visita</th>
+                  <th>Hs última visita</th>
+                  <th>Diferencia hs</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {equiposActivos.map((equipo) => (
+                  <tr
+                    key={equipo.interno}
+                    onClick={() => {
+                      setInterno(equipo.interno);
+                      setModulo("equipos");
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td>
+                      <strong>{equipo.interno}</strong>
+                    </td>
+
+                    <td>{equipo.empresa}</td>
+
+                    <td>{equipo.ubicacion || "-"}</td>
+
+                    <td>
+                      {equipo.fecha_inicio
+                        ? new Date(equipo.fecha_inicio).toLocaleDateString(
+                            "es-AR",
+                          )
+                        : "-"}
+                    </td>
+
+                    <td>{equipo.horometro_inicio} hs</td>
+
+                    <td>
+                      {equipo.ultima_visita
+                        ? new Date(equipo.ultima_visita).toLocaleDateString(
+                            "es-AR",
+                          )
+                        : "Sin visita"}
+                    </td>
+
+                    <td>
+                      {equipo.horometro_ultima_visita !== null
+                        ? `${equipo.horometro_ultima_visita} hs`
+                        : "-"}
+                    </td>
+
+                    <td>
+                      <span
+                        className={
+                          equipo.diferencia_horas >= 300
+                            ? "alerta-roja"
+                            : equipo.diferencia_horas >= 250
+                              ? "alerta-amarilla"
+                              : ""
+                        }
+                      >
+                        {equipo.diferencia_horas !== null
+                          ? `${equipo.diferencia_horas} hs`
+                          : "-"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </main>
+      )}
+
       {modulo === "equipos" && (
         <main className="panel">
           <button className="volver" onClick={() => setModulo("inicio")}>
@@ -164,7 +293,14 @@ function App() {
             type="text"
             placeholder="Ingresar interno..."
             value={interno}
-            onChange={(e) => setInterno(e.target.value)}
+            onChange={(e) => {
+              const valor = e.target.value;
+              setInterno(valor);
+
+              if (!valor) {
+                setHistorialHorometros([]);
+              }
+            }}
           />
 
           {interno && !equipoSeleccionado && (
@@ -209,6 +345,24 @@ function App() {
                 {mensajeHorometro && <p>{mensajeHorometro}</p>}
               </div>
               <hr />
+
+              <h3>Historial de horómetros</h3>
+
+              {historialHorometros.length > 0 ? (
+                <div className="historial-horometros">
+                  {historialHorometros.map((registro) => (
+                    <div className="registro-horometro" key={registro.id}>
+                      <strong>
+                        {new Date(registro.fecha).toLocaleDateString("es-AR")}
+                      </strong>
+
+                      <span>{registro.horometro} hs</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No hay lecturas registradas.</p>
+              )}
 
               <h3>Service de motor</h3>
 

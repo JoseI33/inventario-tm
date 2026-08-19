@@ -1,5 +1,3 @@
-/* esLint-env node */
-
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
@@ -8,7 +6,6 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.put("/equipos/:interno/horometro")
 
 app.get("/", (req, res) => {
   res.send("API TM ROLDAN funcionando");
@@ -27,10 +24,6 @@ app.get("/equipos", async (req, res) => {
       error: "Error al consultar equipos",
     });
   }
-});
-
-app.listen(3000, () => {
-  console.log("Servidor funcionando en http://localhost:3000");
 });
 
 app.get("/services", async (req, res) => {
@@ -53,50 +46,6 @@ app.get("/services", async (req, res) => {
     console.error(error);
     res.status(500).json({
       error: "Error al consultar services",
-    });
-  }
-});
-
-app.put("/equipos/:interno/horometro", async (req, res) => {
-  const { interno } = req.params;
-  const { horometro } = req.body;
-
-  try {
-    const equipoActual = await pool.query(
-      "SELECT horometro_actual FROM equipos WHERE interno = $1",
-      [interno]
-    );
-
-    if (equipoActual.rows.length === 0) {
-      return res.status(404).json({
-        error: "Equipo no encontrado",
-      });
-    }
-
-    const horometroAnterior = equipoActual.rows[0].horometro_actual;
-
-    if (Number(horometro) < Number(horometroAnterior)) {
-      return res.status(400).json({
-        error: "El nuevo horómetro no puede ser menor al actual",
-      });
-    }
-
-    const resultado = await pool.query(
-      `
-      UPDATE equipos
-      SET horometro_actual = $1
-      WHERE interno = $2
-      RETURNING *
-      `,
-      [horometro, interno]
-    );
-
-    res.json(resultado.rows[0]);
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      error: "Error al actualizar horómetro",
     });
   }
 });
@@ -158,7 +107,6 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
     );
 
     res.json(resultado.rows[0]);
-
   } catch (error) {
     console.error(error);
 
@@ -166,4 +114,79 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
       error: "Error al actualizar horómetro",
     });
   }
+});
+
+app.get("/equipos/:interno/horometros", async (req, res) => {
+  const { interno } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        h.id,
+        h.fecha,
+        h.horometro
+      FROM horometros h
+      JOIN equipos e ON e.id = h.equipo_id
+      WHERE e.interno = $1
+      ORDER BY h.fecha DESC, h.id DESC
+      `,
+      [interno]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar historial de horómetros",
+    });
+  }
+});
+
+app.get("/equipos-activos", async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT
+        e.interno,
+        e.tipo,
+        e.marca,
+        e.modelo,
+        c.empresa,
+        c.ubicacion,
+        c.fecha_inicio,
+        c.horometro_inicio,
+        h.fecha AS ultima_visita,
+        h.horometro AS horometro_ultima_visita,
+        (h.horometro - c.horometro_inicio) AS diferencia_horas
+      FROM contratos_equipos c
+      JOIN equipos e
+        ON e.id = c.equipo_id
+
+      LEFT JOIN LATERAL (
+        SELECT
+          h2.fecha,
+          h2.horometro
+        FROM horometros h2
+        WHERE h2.equipo_id = e.id
+        ORDER BY h2.fecha DESC, h2.id DESC
+        LIMIT 1
+      ) h ON true
+
+      WHERE c.activo = true
+      ORDER BY e.interno;
+    `);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar equipos activos",
+    });
+  }
+});
+
+app.listen(3000, () => {
+  console.log("Servidor funcionando en http://localhost:3000");
 });
