@@ -174,7 +174,7 @@ app.get("/equipos-activos", async (req, res) => {
       ) h ON true
 
       WHERE c.activo = true
-      ORDER BY e.interno;
+      ORDER BY CAST(e.interno AS INTEGER) ASC;
     `);
 
     res.json(resultado.rows);
@@ -183,6 +183,127 @@ app.get("/equipos-activos", async (req, res) => {
 
     res.status(500).json({
       error: "Error al consultar equipos activos",
+    });
+  }
+});
+
+app.post("/equipos", async (req, res) => {
+  const {
+    interno,
+    tipo,
+    marca,
+    modelo,
+    horometro_actual,
+    frecuencia_service,
+  } = req.body;
+
+  try {
+    if (!interno || !tipo || !marca || !horometro_actual) {
+      return res.status(400).json({
+        error: "Completá los campos obligatorios.",
+      });
+    }
+
+    const existe = await pool.query(
+      "SELECT id FROM equipos WHERE interno = $1",
+      [interno]
+    );
+
+    if (existe.rows.length > 0) {
+      return res.status(400).json({
+        error: `El interno ${interno} ya existe.`,
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO equipos (
+        interno,
+        tipo,
+        marca,
+        modelo,
+        horometro_actual,
+        frecuencia_service
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+      `,
+      [
+        interno,
+        tipo,
+        marca,
+        modelo || null,
+        Number(horometro_actual),
+        Number(frecuencia_service) || 300,
+      ]
+    );
+
+    res.status(201).json(resultado.rows[0]);
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al crear el equipo.",
+    });
+  }
+});
+
+app.post("/contratos", async (req, res) => {
+  const {
+    interno,
+    empresa,
+    ubicacion,
+    fecha_inicio,
+    horometro_inicio,
+  } = req.body;
+
+  try {
+    if (!interno || !empresa || !fecha_inicio || !horometro_inicio) {
+      return res.status(400).json({
+        error: "Completá los campos obligatorios del contrato.",
+      });
+    }
+
+    const equipo = await pool.query(
+      "SELECT id FROM equipos WHERE interno = $1",
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      return res.status(404).json({
+        error: "Equipo no encontrado.",
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO contratos_equipos (
+        equipo_id,
+        empresa,
+        ubicacion,
+        fecha_inicio,
+        horometro_inicio,
+        activo
+      )
+      VALUES ($1, $2, $3, $4, $5, true)
+      RETURNING *
+      `,
+      [
+        equipo.rows[0].id,
+        empresa,
+        ubicacion || null,
+        fecha_inicio,
+        Number(horometro_inicio),
+      ]
+    );
+
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al crear el contrato.",
     });
   }
 });

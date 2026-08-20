@@ -4,6 +4,29 @@ import { useEffect } from "react";
 import { filtros } from "./data/filtros";
 
 function App() {
+  const [internoContrato, setInternoContrato] = useState("");
+
+  //const [internoCreado, setInternoCreado] = useState("");
+
+  const [mensajeContrato, setMensajeContrato] = useState("");
+  const [nuevoContrato, setNuevoContrato] = useState({
+    empresa: "",
+    ubicacion: "",
+    fecha_inicio: "",
+    horometro_inicio: "",
+  });
+
+  const [nuevoEquipo, setNuevoEquipo] = useState({
+    interno: "",
+    tipo: "",
+    marca: "",
+    modelo: "",
+    horometro_actual: "",
+    frecuencia_service: 300,
+  });
+
+  const [mensajeNuevoEquipo, setMensajeNuevoEquipo] = useState("");
+
   const [equiposActivos, setEquiposActivos] = useState([]);
 
   useEffect(() => {
@@ -152,6 +175,110 @@ function App() {
     }
   };
 
+  const guardarNuevoEquipo = async (e) => {
+    e.preventDefault();
+
+    setMensajeNuevoEquipo("");
+
+    try {
+      const response = await fetch("http://localhost:3000/equipos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(nuevoEquipo),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeNuevoEquipo(data.error || "No se pudo crear el equipo.");
+        return;
+      }
+
+      // setInternoCreado(data.interno);
+      setInternoContrato(data.interno);
+
+      // Lo agregamos también al estado de React
+      setEquipos((equiposActuales) => [...equiposActuales, data]);
+
+      setMensajeNuevoEquipo(`Interno ${data.interno} creado correctamente.`);
+
+      // Limpiamos el formulario
+      setNuevoEquipo({
+        interno: "",
+        tipo: "",
+        marca: "",
+        modelo: "",
+        horometro_actual: "",
+        frecuencia_service: 300,
+      });
+    } catch (error) {
+      console.error(error);
+      setMensajeNuevoEquipo("Error de conexión con el servidor.");
+    }
+  };
+
+  const guardarContrato = async () => {
+  if (!internoContrato) {
+    setMensajeContrato("Seleccioná un equipo.");
+    return;
+  }
+
+  if (
+    !nuevoContrato.empresa ||
+    !nuevoContrato.fecha_inicio ||
+    !nuevoContrato.horometro_inicio
+  ) {
+    setMensajeContrato(
+      "Completá empresa, fecha y horómetro de inicio."
+    );
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      "http://localhost:3000/contratos",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interno: internoContrato,
+          ...nuevoContrato,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMensajeContrato(
+        data.error || "No se pudo crear el contrato."
+      );
+      return;
+    }
+
+    setMensajeContrato(
+      `Contrato del interno ${internoContrato} creado correctamente.`
+    );
+
+    setNuevoContrato({
+      empresa: "",
+      ubicacion: "",
+      fecha_inicio: "",
+      horometro_inicio: "",
+    });
+
+    setInternoContrato("");
+  } catch (error) {
+    console.error(error);
+    setMensajeContrato(
+      "Error de conexión con el servidor."
+    );
+  }
+};
   return (
     <div className="app">
       <header>
@@ -171,8 +298,13 @@ function App() {
             <p>Horómetros, services y filtros.</p>
           </button>
           <button className="card" onClick={() => setModulo("equipos-activos")}>
-            <h2>Equipos activos</h2>
-            <p>Contratos, ubicaciones y últimas visitas.</p>
+            <h2>Equipos Alq/Serv.</h2>
+            <p>Horómetros general, ubicación y empresas.</p>
+          </button>
+
+          <button className="card" onClick={() => setModulo("nuevo-equipo")}>
+            <h2>Nuevo equipo</h2>
+            <p>Registrar una nueva máquina en el sistema.</p>
           </button>
         </main>
       )}
@@ -278,6 +410,211 @@ function App() {
               </tbody>
             </table>
           </div>
+        </main>
+      )}
+
+      {modulo === "nuevo-equipo" && (
+        <main className="panel">
+          <button className="volver" onClick={() => setModulo("inicio")}>
+            ← Volver
+          </button>
+
+          <h2>Nuevo equipo</h2>
+
+          <form className="form-nuevo-equipo" onSubmit={guardarNuevoEquipo}>
+            <label>
+              Interno *
+              <input
+                type="text"
+                value={nuevoEquipo.interno}
+                onChange={(e) =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    interno: e.target.value,
+                  })
+                }
+                required
+              />
+            </label>
+
+            <label>
+              Tipo de equipo *
+              <input
+                type="text"
+                placeholder="Ej: Autoelevador"
+                value={nuevoEquipo.tipo}
+                onChange={(e) =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    tipo: e.target.value,
+                  })
+                }
+                required
+              />
+            </label>
+
+            <label>
+              Marca *
+              <input
+                type="text"
+                placeholder="Ej: Mitsubishi"
+                value={nuevoEquipo.marca}
+                onChange={(e) =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    marca: e.target.value,
+                  })
+                }
+                required
+              />
+            </label>
+
+            <label>
+              Modelo
+              <input
+                type="text"
+                value={nuevoEquipo.modelo}
+                onChange={(e) =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    modelo: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Horómetro actual *
+              <input
+                type="number"
+                min="0"
+                value={nuevoEquipo.horometro_actual}
+                onChange={(e) =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    horometro_actual: e.target.value,
+                  })
+                }
+                required
+              />
+            </label>
+
+            <label>
+              Frecuencia de service
+              <input
+                type="number"
+                min="1"
+                value={nuevoEquipo.frecuencia_service}
+                onChange={(e) =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    frecuencia_service: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <button type="submit">Guardar equipo</button>
+          </form>
+
+          <hr />
+
+          <h2 className="titulo-nuevo-equipo">Asignar contrato</h2>
+
+          {internoContrato ? (
+            <p className="mensaje">
+              Equipo seleccionado: <strong>Interno {internoContrato}</strong>
+            </p>
+          ) : (
+            <p className="mensaje">Primero guardá el nuevo equipo.</p>
+          )}
+
+          <label>
+            Interno *
+            <select
+              value={internoContrato}
+              onChange={(e) => setInternoContrato(e.target.value)}
+            >
+              <option value="">Seleccionar equipo...</option>
+
+              {equipos.map((equipo) => (
+                <option key={equipo.id} value={equipo.interno}>
+                  Interno {equipo.interno} - {equipo.marca} {equipo.modelo}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="form-nuevo-equipo">
+            <label>
+              Empresa *
+              <input
+                type="text"
+                value={nuevoContrato.empresa}
+                onChange={(e) =>
+                  setNuevoContrato({
+                    ...nuevoContrato,
+                    empresa: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Ubicación
+              <input
+                type="text"
+                value={nuevoContrato.ubicacion}
+                onChange={(e) =>
+                  setNuevoContrato({
+                    ...nuevoContrato,
+                    ubicacion: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Fecha de inicio *
+              <input
+                type="date"
+                value={nuevoContrato.fecha_inicio}
+                onChange={(e) =>
+                  setNuevoContrato({
+                    ...nuevoContrato,
+                    fecha_inicio: e.target.value,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Horómetro de inicio *
+              <input
+                type="number"
+                value={nuevoContrato.horometro_inicio}
+                onChange={(e) =>
+                  setNuevoContrato({
+                    ...nuevoContrato,
+                    horometro_inicio: e.target.value,
+                  })
+                }
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={guardarContrato}
+            disabled={!internoContrato}
+          >
+            Guardar contrato
+          </button>
+
+          {mensajeContrato && <p className="mensaje">{mensajeContrato}</p>}
+
+          {mensajeNuevoEquipo && (
+            <p className="mensaje">{mensajeNuevoEquipo}</p>
+          )}
         </main>
       )}
 
