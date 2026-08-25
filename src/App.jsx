@@ -1,14 +1,58 @@
 import { useState } from "react";
 import "./App.css";
 import { useEffect } from "react";
-import { filtros } from "./data/filtros";
 
 function App() {
+  // CONFIGURACION DE MANTENIMIENTO
+  const [configInterno, setConfigInterno] = useState("");
+  const [configPlan, setConfigPlan] = useState("");
+
+  const [planesMantenimiento, setPlanesMantenimiento] = useState([]);
+  const [componentesConfig, setComponentesConfig] = useState([]);
+  const [mensajeConfiguracion, setMensajeConfiguracion] = useState("");
+
+  const [configMantenimientos, setConfigMantenimientos] = useState({
+    motor: {
+      fecha: "",
+      horometro: "",
+    },
+    hidraulico: {
+      componente_id: "",
+      fecha: "",
+      horometro: "",
+    },
+    caja: {
+      componente_id: "",
+      fecha: "",
+      horometro: "",
+    },
+    reductor: {
+      componente_id: "",
+      fecha: "",
+      horometro: "",
+    },
+  });
+
+  // EQUIPOS
+  const [equipos, setEquipos] = useState([]);
+  const [interno, setInterno] = useState("");
+  const [modulo, setModulo] = useState("inicio");
+
+  // SERVIS Y MANTENIMIENTO
+  const [services, setServices] = useState([]);
+  const [mantenimientos, setMantenimientos] = useState([]);
+  const [planMantenimiento, setPlanMantenimiento] = useState([]);
+  const [historialHorometros, setHistorialHorometros] = useState([]);
+
+  // HOROMETROS
+  const [fechaHorometro, setFechaHorometro] = useState("");
+  const [nuevoHorometro, setNuevoHorometro] = useState("");
+  const [mensajeHorometro, setMensajeHorometro] = useState("");
+
+  // CONTRATOS
   const [internoContrato, setInternoContrato] = useState("");
-
-  //const [internoCreado, setInternoCreado] = useState("");
-
   const [mensajeContrato, setMensajeContrato] = useState("");
+
   const [nuevoContrato, setNuevoContrato] = useState({
     empresa: "",
     ubicacion: "",
@@ -16,6 +60,7 @@ function App() {
     horometro_inicio: "",
   });
 
+  // NUEVO EQUIPO
   const [nuevoEquipo, setNuevoEquipo] = useState({
     interno: "",
     tipo: "",
@@ -26,8 +71,32 @@ function App() {
   });
 
   const [mensajeNuevoEquipo, setMensajeNuevoEquipo] = useState("");
-
   const [equiposActivos, setEquiposActivos] = useState([]);
+
+  useEffect(() => {
+    if (!interno) return;
+
+    fetch(`http://localhost:3000/equipos/${interno}/plan-mantenimiento`)
+      .then((response) => response.json())
+      .then((data) => {
+        setPlanMantenimiento(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar plan de mantenimiento:", error);
+        setPlanMantenimiento([]);
+      });
+  }, [interno]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/planes-mantenimiento")
+      .then((response) => response.json())
+      .then((data) => {
+        setPlanesMantenimiento(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar planes:", error);
+      });
+  }, []);
 
   useEffect(() => {
     fetch("http://localhost:3000/equipos-activos")
@@ -39,16 +108,6 @@ function App() {
         console.error("Error al cargar equipos activos:", error);
       });
   }, []);
-
-  const [historialHorometros, setHistorialHorometros] = useState([]);
-
-  const [fechaHorometro, setFechaHorometro] = useState("");
-
-  const [nuevoHorometro, setNuevoHorometro] = useState("");
-  const [mensajeHorometro, setMensajeHorometro] = useState("");
-
-  const [services, setServices] = useState([]);
-  const [equipos, setEquipos] = useState([]);
 
   useEffect(() => {
     fetch("http://localhost:3000/equipos")
@@ -69,9 +128,6 @@ function App() {
         console.error("Error al cargar services:", error);
       });
   }, []);
-
-  const [modulo, setModulo] = useState("inicio");
-  const [interno, setInterno] = useState("");
 
   useEffect(() => {
     if (!interno) return;
@@ -97,7 +153,34 @@ function App() {
     )
     .sort((a, b) => b.horometro - a.horometro)[0];
 
-  const filtrosEquipo = filtros.filter((filtro) => filtro.interno === interno);
+  useEffect(() => {
+    if (!interno) return;
+
+    fetch(`http://localhost:3000/equipos/${interno}/mantenimientos`)
+      .then((response) => response.json())
+      .then((data) => {
+        setMantenimientos(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar mantenimientos:", error);
+        setMantenimientos([]);
+      });
+  }, [interno]);
+
+  useEffect(() => {
+    if (!configPlan) return;
+
+    fetch(
+      `http://localhost:3000/planes-mantenimiento/${configPlan}/componentes`,
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        setComponentesConfig(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar componentes del plan:", error);
+      });
+  }, [configPlan]);
 
   let horasUsadas = 0;
   let proximoService = 0;
@@ -220,26 +303,22 @@ function App() {
   };
 
   const guardarContrato = async () => {
-  if (!internoContrato) {
-    setMensajeContrato("Seleccioná un equipo.");
-    return;
-  }
+    if (!internoContrato) {
+      setMensajeContrato("Seleccioná un equipo.");
+      return;
+    }
 
-  if (
-    !nuevoContrato.empresa ||
-    !nuevoContrato.fecha_inicio ||
-    !nuevoContrato.horometro_inicio
-  ) {
-    setMensajeContrato(
-      "Completá empresa, fecha y horómetro de inicio."
-    );
-    return;
-  }
+    if (
+      !nuevoContrato.empresa ||
+      !nuevoContrato.fecha_inicio ||
+      !nuevoContrato.horometro_inicio
+    ) {
+      setMensajeContrato("Completá empresa, fecha y horómetro de inicio.");
+      return;
+    }
 
-  try {
-    const response = await fetch(
-      "http://localhost:3000/contratos",
-      {
+    try {
+      const response = await fetch("http://localhost:3000/contratos", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -248,37 +327,179 @@ function App() {
           interno: internoContrato,
           ...nuevoContrato,
         }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeContrato(data.error || "No se pudo crear el contrato.");
+        return;
       }
-    );
 
-    const data = await response.json();
-
-    if (!response.ok) {
       setMensajeContrato(
-        data.error || "No se pudo crear el contrato."
+        `Contrato del interno ${internoContrato} creado correctamente.`,
       );
+
+      setNuevoContrato({
+        empresa: "",
+        ubicacion: "",
+        fecha_inicio: "",
+        horometro_inicio: "",
+      });
+
+      setInternoContrato("");
+    } catch (error) {
+      console.error(error);
+      setMensajeContrato("Error de conexión con el servidor.");
+    }
+  };
+
+  const componenteHidraulico = componentesConfig.find(
+    (item) => item.nombre === "Filtro hidráulico",
+  );
+
+  const componenteCaja = componentesConfig.find(
+    (item) => item.nombre === "Filtro de caja",
+  );
+
+  const componenteReductor = componentesConfig.find(
+    (item) => item.nombre === "SAE 90",
+  );
+
+  const guardarConfiguracionMantenimiento = async () => {
+    if (!configInterno) {
+      setMensajeConfiguracion("Seleccioná un interno.");
       return;
     }
 
-    setMensajeContrato(
-      `Contrato del interno ${internoContrato} creado correctamente.`
-    );
+    if (!configPlan) {
+      setMensajeConfiguracion("Seleccioná un plan de mantenimiento.");
+      return;
+    }
 
-    setNuevoContrato({
-      empresa: "",
-      ubicacion: "",
-      fecha_inicio: "",
-      horometro_inicio: "",
-    });
+    try {
+      setMensajeConfiguracion("Guardando configuración...");
 
-    setInternoContrato("");
-  } catch (error) {
-    console.error(error);
-    setMensajeContrato(
-      "Error de conexión con el servidor."
+      // 1. Asignar plan al equipo
+      const responsePlan = await fetch(
+        `http://localhost:3000/equipos/${configInterno}/plan-mantenimiento`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            plan_id: Number(configPlan),
+          }),
+        },
+      );
+
+      const dataPlan = await responsePlan.json();
+
+      if (!responsePlan.ok) {
+        setMensajeConfiguracion(
+          dataPlan.error || "No se pudo asignar el plan.",
+        );
+        return;
+      }
+
+      if (
+  configMantenimientos.motor.fecha &&
+  configMantenimientos.motor.horometro
+) {
+  const responseMotor = await fetch(
+    `http://localhost:3000/equipos/${configInterno}/services`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fecha: configMantenimientos.motor.fecha,
+        horometro: Number(
+          configMantenimientos.motor.horometro
+        ),
+      }),
+    }
+  );
+
+  const dataMotor = await responseMotor.json();
+
+  if (!responseMotor.ok) {
+    setMensajeConfiguracion(
+      dataMotor.error || "Error al guardar service de motor."
     );
+    return;
   }
-};
+}
+
+      // 2. Preparar mantenimientos que tengan fecha + horómetro
+      const registros = [
+        configMantenimientos.hidraulico,
+        configMantenimientos.caja,
+        configMantenimientos.reductor,
+      ].filter((item) => item.componente_id && item.fecha && item.horometro);
+
+      // 3. Guardar históricos
+      for (const registro of registros) {
+        const response = await fetch(
+          `http://localhost:3000/equipos/${configInterno}/mantenimientos`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              componente_id: registro.componente_id,
+              fecha: registro.fecha,
+              horometro: Number(registro.horometro),
+              observaciones: "Carga desde configuración",
+            }),
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setMensajeConfiguracion(
+            data.error || "Error al guardar mantenimiento.",
+          );
+          return;
+        }
+      }
+
+      setMensajeConfiguracion(
+        `Configuración del interno ${configInterno} guardada correctamente.`,
+      );
+
+      setConfigMantenimientos({
+         motor: {
+    fecha: "",
+    horometro: "",
+  },
+        hidraulico: {
+          componente_id: "",
+          fecha: "",
+          horometro: "",
+        },
+        caja: {
+          componente_id: "",
+          fecha: "",
+          horometro: "",
+        },
+        reductor: {
+          componente_id: "",
+          fecha: "",
+          horometro: "",
+        },
+      });
+    } catch (error) {
+      console.error(error);
+
+      setMensajeConfiguracion("Error de conexión con el servidor.");
+    }
+  };
+
   return (
     <div className="app">
       <header>
@@ -305,6 +526,13 @@ function App() {
           <button className="card" onClick={() => setModulo("nuevo-equipo")}>
             <h2>Nuevo equipo</h2>
             <p>Registrar una nueva máquina en el sistema.</p>
+          </button>
+          <button
+            className="card"
+            onClick={() => setModulo("config-mantenimiento")}
+          >
+            <h2>Configurar mantenimiento</h2>
+            <p>Asignar planes y cargar históricos.</p>
           </button>
         </main>
       )}
@@ -618,6 +846,243 @@ function App() {
         </main>
       )}
 
+      {modulo === "config-mantenimiento" && (
+        <main className="panel">
+          <button className="volver" onClick={() => setModulo("inicio")}>
+            ← Volver
+          </button>
+
+          <h2 className="titulo-nuevo-equipo">
+            Configuración de mantenimiento
+          </h2>
+
+          <div className="form-nuevo-equipo">
+            <label>
+              Interno
+              <select
+                value={configInterno}
+                onChange={(e) => setConfigInterno(e.target.value)}
+              >
+                <option value="">Seleccionar equipo...</option>
+
+                {equipos.map((equipo) => (
+                  <option key={equipo.id} value={equipo.interno}>
+                    Interno {equipo.interno} - {equipo.marca} {equipo.modelo}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Plan de mantenimiento
+              <select
+                value={configPlan}
+                onChange={(e) => setConfigPlan(e.target.value)}
+              >
+                <option value="">Seleccionar plan...</option>
+
+                {planesMantenimiento.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="mantenimiento-card">
+            <h4>Service de motor</h4>
+
+            <p>Frecuencia: 300 hs</p>
+
+            <label>
+              Última fecha
+              <input
+                type="date"
+                value={configMantenimientos.motor.fecha}
+                onChange={(e) =>
+                  setConfigMantenimientos({
+                    ...configMantenimientos,
+                    motor: {
+                      ...configMantenimientos.motor,
+                      fecha: e.target.value,
+                    },
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Último horómetro
+              <input
+                type="number"
+                value={configMantenimientos.motor.horometro}
+                onChange={(e) =>
+                  setConfigMantenimientos({
+                    ...configMantenimientos,
+                    motor: {
+                      ...configMantenimientos.motor,
+                      horometro: e.target.value,
+                    },
+                  })
+                }
+              />
+            </label>
+          </div>
+
+          {configPlan && (
+            <div className="mantenimientos-grid">
+              {/* HIDRÁULICO */}
+              {componenteHidraulico && (
+                <div className="mantenimiento-card">
+                  <h4>Hidráulico</h4>
+
+                  <p>Frecuencia: {componenteHidraulico.frecuencia_horas} hs</p>
+
+                  <label>
+                    Última fecha
+                    <input
+                      type="date"
+                      value={configMantenimientos.hidraulico.fecha}
+                      onChange={(e) =>
+                        setConfigMantenimientos({
+                          ...configMantenimientos,
+                          hidraulico: {
+                            ...configMantenimientos.hidraulico,
+                            componente_id: componenteHidraulico.componente_id,
+                            fecha: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    Último horómetro
+                    <input
+                      type="number"
+                      value={configMantenimientos.hidraulico.horometro}
+                      onChange={(e) =>
+                        setConfigMantenimientos({
+                          ...configMantenimientos,
+                          hidraulico: {
+                            ...configMantenimientos.hidraulico,
+                            componente_id: componenteHidraulico.componente_id,
+                            horometro: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+
+              {/* CAJA */}
+              {componenteCaja && (
+                <div className="mantenimiento-card">
+                  <h4>Caja</h4>
+
+                  <p>Frecuencia: {componenteCaja.frecuencia_horas} hs</p>
+
+                  <label>
+                    Última fecha
+                    <input
+                      type="date"
+                      value={configMantenimientos.caja.fecha}
+                      onChange={(e) =>
+                        setConfigMantenimientos({
+                          ...configMantenimientos,
+                          caja: {
+                            ...configMantenimientos.caja,
+                            componente_id: componenteCaja.componente_id,
+                            fecha: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    Último horómetro
+                    <input
+                      type="number"
+                      value={configMantenimientos.caja.horometro}
+                      onChange={(e) =>
+                        setConfigMantenimientos({
+                          ...configMantenimientos,
+                          caja: {
+                            ...configMantenimientos.caja,
+                            componente_id: componenteCaja.componente_id,
+                            horometro: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+
+              {/* REDUCTOR */}
+              {componenteReductor && (
+                <div className="mantenimiento-card">
+                  <h4>Reductor</h4>
+
+                  <p>Frecuencia: {componenteReductor.frecuencia_horas} hs</p>
+
+                  <label>
+                    Última fecha
+                    <input
+                      type="date"
+                      value={configMantenimientos.reductor.fecha}
+                      onChange={(e) =>
+                        setConfigMantenimientos({
+                          ...configMantenimientos,
+                          reductor: {
+                            ...configMantenimientos.reductor,
+                            componente_id: componenteReductor.componente_id,
+                            fecha: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    Último horómetro
+                    <input
+                      type="number"
+                      value={configMantenimientos.reductor.horometro}
+                      onChange={(e) =>
+                        setConfigMantenimientos({
+                          ...configMantenimientos,
+                          reductor: {
+                            ...configMantenimientos.reductor,
+                            componente_id: componenteReductor.componente_id,
+                            horometro: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={guardarConfiguracionMantenimiento}
+            disabled={!configInterno || !configPlan}
+          >
+            Guardar configuración
+          </button>
+
+          {mensajeConfiguracion && (
+            <p className="mensaje">{mensajeConfiguracion}</p>
+          )}
+        </main>
+      )}
+
       {modulo === "equipos" && (
         <main className="panel">
           <button className="volver" onClick={() => setModulo("inicio")}>
@@ -732,23 +1197,105 @@ function App() {
                 <hr />
               )}
 
-              <h3>Filtros</h3>
+              <hr />
 
-              {filtrosEquipo.length > 0 ? (
-                filtrosEquipo.map((filtro) => (
-                  <div
-                    className="filtro"
-                    key={`${filtro.interno}-${filtro.tipo}`}
-                  >
-                    <strong>{filtro.tipo}</strong>
+              <h3>Mantenimientos anuales</h3>
 
-                    <span>{filtro.codigo}</span>
+              {mantenimientos.length > 0 ? (
+                <div className="mantenimientos-grid">
+                  {mantenimientos.map((item) => (
+                    <div
+                      className="mantenimiento-card"
+                      key={item.componente_id}
+                    >
+                      <h4>
+                        {item.componente === "Filtro hidráulico"
+                          ? "Hidráulico"
+                          : item.componente === "Filtro de caja"
+                            ? "Caja"
+                            : item.componente === "SAE 90"
+                              ? "Reductor y Diferencial"
+                              : item.componente}
+                      </h4>
 
-                    <small>Cada {filtro.frecuenciaHoras} hs</small>
-                  </div>
-                ))
+                      {item.horometro_ultimo_mantenimiento !== null ? (
+                        <>
+                          <p>
+                            <strong>Último:</strong>{" "}
+                            {item.horometro_ultimo_mantenimiento} hs
+                          </p>
+
+                          <p>
+                            <strong>Fecha:</strong>{" "}
+                            {new Date(
+                              item.fecha_ultimo_mantenimiento,
+                            ).toLocaleDateString("es-AR")}
+                          </p>
+
+                          <p>
+                            <strong>Frecuencia:</strong> {item.frecuencia_horas}{" "}
+                            hs
+                          </p>
+
+                          <p>
+                            <strong>Horas usadas:</strong> {item.horas_usadas}{" "}
+                            hs
+                          </p>
+
+                          <p>
+                            <strong>Próximo:</strong>{" "}
+                            {item.proximo_mantenimiento} hs
+                          </p>
+
+                          <p>
+                            <strong>
+                              {item.horas_restantes < 0
+                                ? "Vencido por:"
+                                : "Restante:"}
+                            </strong>{" "}
+                            {Math.abs(item.horas_restantes)} hs
+                          </p>
+
+                          <div
+                            className={`estado mantenimiento-${item.estado
+                              .toLowerCase()
+                              .replaceAll(" ", "-")}`}
+                          >
+                            {item.estado}
+                          </div>
+                        </>
+                      ) : (
+                        <p>Sin historial registrado.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <p>No hay filtros registrados para este equipo.</p>
+                <p>No hay mantenimientos generales registrados.</p>
+              )}
+
+              <h3>Plan de mantenimiento</h3>
+
+              {planMantenimiento.length > 0 ? (
+                <>
+                  <p>
+                    <strong>Plan:</strong> {planMantenimiento[0].plan}
+                  </p>
+
+                  <div className="plan-mantenimiento">
+                    {planMantenimiento.map((item) => (
+                      <div className="filtro" key={item.componente_id}>
+                        <strong>{item.componente}</strong>
+
+                        <span>{item.codigo || "---"}</span>
+
+                        <small>Cada {item.frecuencia_horas} hs</small>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p>Este equipo no tiene un plan de mantenimiento asignado.</p>
               )}
             </div>
           )}

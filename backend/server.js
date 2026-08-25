@@ -116,6 +116,152 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
   }
 });
 
+app.put("/equipos/:interno/plan-mantenimiento", async (req, res) => {
+  const { interno } = req.params;
+  const { plan_id } = req.body;
+
+  try {
+    const resultado = await pool.query(
+      `
+      UPDATE equipos
+      SET plan_mantenimiento_id = $1
+      WHERE interno = $2
+      RETURNING *
+      `,
+      [plan_id, interno]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({
+        error: "Equipo no encontrado",
+      });
+    }
+
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al asignar plan de mantenimiento",
+    });
+  }
+});
+
+app.post("/equipos/:interno/mantenimientos", async (req, res) => {
+  const { interno } = req.params;
+
+  const {
+    componente_id,
+    fecha,
+    horometro,
+    observaciones,
+  } = req.body;
+
+  try {
+    if (!componente_id || !fecha || !horometro) {
+      return res.status(400).json({
+        error: "Componente, fecha y horómetro son obligatorios",
+      });
+    }
+
+    const equipo = await pool.query(
+      `
+      SELECT id
+      FROM equipos
+      WHERE interno = $1
+      `,
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      return res.status(404).json({
+        error: "Equipo no encontrado",
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO mantenimientos (
+        equipo_id,
+        componente_id,
+        fecha,
+        horometro,
+        observaciones
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [
+        equipo.rows[0].id,
+        componente_id,
+        fecha,
+        Number(horometro),
+        observaciones || null,
+      ]
+    );
+
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al registrar mantenimiento",
+    });
+  }
+});
+
+app.post("/equipos/:interno/services", async (req, res) => {
+  const { interno } = req.params;
+  const { fecha, horometro } = req.body;
+
+  try {
+    if (!fecha || !horometro) {
+      return res.status(400).json({
+        error: "Fecha y horómetro son obligatorios",
+      });
+    }
+
+    const equipo = await pool.query(
+      "SELECT id FROM equipos WHERE interno = $1",
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      return res.status(404).json({
+        error: "Equipo no encontrado",
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO services (
+        equipo_id,
+        fecha,
+        horometro,
+        tipo,
+        observaciones
+      )
+      VALUES ($1, $2, $3, 'Motor', $4)
+      RETURNING *
+      `,
+      [
+        equipo.rows[0].id,
+        fecha,
+        Number(horometro),
+        "Carga desde configuración",
+      ]
+    );
+
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al registrar service de motor",
+    });
+  }
+});
+
 app.get("/equipos/:interno/horometros", async (req, res) => {
   const { interno } = req.params;
 
@@ -304,6 +450,184 @@ app.post("/contratos", async (req, res) => {
 
     res.status(500).json({
       error: "Error al crear el contrato.",
+    });
+  }
+});
+
+app.get("/equipos/:interno/plan-mantenimiento", async (req, res) => {
+  const { interno } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        e.interno,
+        p.id AS plan_id,
+        p.nombre AS plan,
+        c.id AS componente_id,
+        c.nombre AS componente,
+        c.codigo,
+        pc.frecuencia_horas
+      FROM equipos e
+      JOIN planes_mantenimiento p
+        ON p.id = e.plan_mantenimiento_id
+      JOIN plan_componentes pc
+        ON pc.plan_id = p.id
+      JOIN componentes_mantenimiento c
+        ON c.id = pc.componente_id
+      WHERE e.interno = $1
+      ORDER BY pc.frecuencia_horas, c.nombre
+      `,
+      [interno]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar el plan de mantenimiento",
+    });
+  }
+});
+
+app.get("/equipos/:interno/mantenimientos", async (req, res) => {
+  const { interno } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        e.interno,
+        e.horometro_actual,
+        c.id AS componente_id,
+        c.nombre AS componente,
+        c.codigo,
+        pc.frecuencia_horas,
+        m.fecha AS fecha_ultimo_mantenimiento,
+        m.horometro AS horometro_ultimo_mantenimiento,
+
+        (
+          e.horometro_actual - m.horometro
+        ) AS horas_usadas,
+
+        (
+          m.horometro + pc.frecuencia_horas
+        ) AS proximo_mantenimiento,
+
+        (
+          (m.horometro + pc.frecuencia_horas)
+          - e.horometro_actual
+        ) AS horas_restantes
+
+      FROM equipos e
+
+      JOIN planes_mantenimiento p
+        ON p.id = e.plan_mantenimiento_id
+
+      JOIN plan_componentes pc
+        ON pc.plan_id = p.id
+
+      JOIN componentes_mantenimiento c
+        ON c.id = pc.componente_id
+
+      LEFT JOIN LATERAL (
+        SELECT
+          m2.fecha,
+          m2.horometro
+        FROM mantenimientos m2
+        WHERE m2.equipo_id = e.id
+        AND m2.componente_id = c.id
+        ORDER BY m2.fecha DESC, m2.id DESC
+        LIMIT 1
+      ) m ON true
+
+      WHERE e.interno = $1
+
+      AND (
+        c.nombre = 'Filtro hidráulico'
+        OR c.nombre = 'Filtro de caja'
+        OR c.nombre = 'SAE 90'
+      )
+
+      ORDER BY pc.frecuencia_horas, c.nombre
+      `,
+      [interno]
+    );
+
+    const mantenimientos = resultado.rows.map((item) => {
+      let estado = "Sin historial";
+
+      if (item.horometro_ultimo_mantenimiento !== null) {
+        if (item.horas_restantes <= 0) {
+          estado = "Vencido";
+        } else if (item.horas_restantes <= 200) {
+          estado = "Próximo";
+        } else {
+          estado = "OK";
+        }
+      }
+
+      return {
+        ...item,
+        estado,
+      };
+    });
+
+    res.json(mantenimientos);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar mantenimientos",
+    });
+  }
+});
+
+app.get("/planes-mantenimiento", async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT id, nombre, tipo_equipo, marca, modelo
+      FROM planes_mantenimiento
+      ORDER BY nombre
+    `);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar planes de mantenimiento",
+    });
+  }
+});
+
+app.get("/planes-mantenimiento/:id/componentes", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        c.id AS componente_id,
+        c.nombre,
+        c.codigo,
+        pc.frecuencia_horas
+      FROM plan_componentes pc
+      JOIN componentes_mantenimiento c
+        ON c.id = pc.componente_id
+      WHERE pc.plan_id = $1
+      ORDER BY pc.frecuencia_horas, c.nombre
+      `,
+      [id]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar componentes del plan",
     });
   }
 });
