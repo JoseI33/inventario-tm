@@ -260,3 +260,49 @@ header p {
     grid-template-columns: 1fr;
   }
 }
+
+.filtros-600-grid {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.filtros-600-grid .mantenimiento-card {
+  width: 300px;
+}
+
+.estado {
+  margin-top: 15px;
+  padding: 8px 16px;
+  border-radius: 8px;
+
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+
+  border: 1px solid transparent;
+}
+
+/* OK */
+.mantenimiento-ok {
+  background-color: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+
+/* PRÓXIMO */
+.mantenimiento-próximo {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+/* VENCIDO */
+.mantenimiento-vencido {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}

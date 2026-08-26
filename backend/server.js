@@ -632,6 +632,233 @@ app.get("/planes-mantenimiento/:id/componentes", async (req, res) => {
   }
 });
 
+app.post("/equipos/:interno/service-completo", async (req, res) => {
+  const { interno } = req.params;
+
+  const {
+    fecha,
+    horometro,
+    secundarios = [],
+  } = req.body;
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const equipo = await client.query(
+      `
+      SELECT id
+      FROM equipos
+      WHERE interno = $1
+      `,
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Equipo no encontrado",
+      });
+    }
+
+    if (!fecha || !horometro) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        error: "Fecha y horómetro son obligatorios",
+      });
+    }
+
+    const equipoId = equipo.rows[0].id;
+
+    // 1. Crear service de motor
+    const service = await client.query(
+      `
+      INSERT INTO services (
+        equipo_id,
+        fecha,
+        horometro,
+        tipo,
+        observaciones
+      )
+      VALUES ($1, $2, $3, 'Motor', $4)
+      RETURNING *
+      `,
+      [
+        equipoId,
+        fecha,
+        Number(horometro),
+        "Service registrado desde sistema",
+      ]
+    );
+
+    const serviceId = service.rows[0].id;
+
+    // 2. Registrar filtros especiales
+    for (const item of secundarios) {
+      await client.query(
+        `
+        INSERT INTO service_componentes (
+          service_id,
+          componente_id,
+          cambiado,
+          motivo,
+          observaciones
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        `,
+        [
+          serviceId,
+          item.componente_id,
+          Boolean(item.cambiado),
+          item.motivo || null,
+          item.observaciones || null,
+        ]
+      );
+
+      // 3. Si se cambió, reiniciamos su contador
+      if (item.cambiado) {
+        await client.query(
+          `
+          INSERT INTO mantenimientos (
+            equipo_id,
+            componente_id,
+            fecha,
+            horometro,
+            observaciones
+          )
+          VALUES ($1, $2, $3, $4, $5)
+          `,
+          [
+            equipoId,
+            item.componente_id,
+            fecha,
+            Number(horometro),
+            item.motivo
+              ? `Cambio durante service: ${item.motivo}`
+              : "Cambio durante service",
+          ]
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+
+    res.status(201).json({
+      mensaje: "Service registrado correctamente",
+      service: service.rows[0],
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al registrar service completo",
+    });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
+  const { interno } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        e.interno,
+        e.horometro_actual,
+
+        c.id AS componente_id,
+        c.nombre AS componente,
+        c.codigo,
+
+        pc.frecuencia_horas,
+
+        m.fecha AS fecha_ultimo_cambio,
+        m.horometro AS horometro_ultimo_cambio,
+        m.observaciones,
+
+        (
+          e.horometro_actual - m.horometro
+        ) AS horas_usadas,
+
+        (
+          m.horometro + pc.frecuencia_horas
+        ) AS proximo_cambio,
+
+        (
+          (m.horometro + pc.frecuencia_horas)
+          - e.horometro_actual
+        ) AS horas_restantes
+
+      FROM equipos e
+
+      JOIN planes_mantenimiento p
+        ON p.id = e.plan_mantenimiento_id
+
+      JOIN plan_componentes pc
+        ON pc.plan_id = p.id
+
+      JOIN componentes_mantenimiento c
+        ON c.id = pc.componente_id
+
+      LEFT JOIN LATERAL (
+        SELECT
+          m2.fecha,
+          m2.horometro,
+          m2.observaciones
+        FROM mantenimientos m2
+        WHERE m2.equipo_id = e.id
+          AND m2.componente_id = c.id
+        ORDER BY m2.fecha DESC, m2.id DESC
+        LIMIT 1
+      ) m ON true
+
+      WHERE e.interno = $1
+        AND (
+          c.nombre = 'Filtro aire secundario'
+          OR c.nombre = 'Filtro combustible eléctrico'
+        )
+
+      ORDER BY c.nombre
+      `,
+      [interno]
+    );
+
+    const filtros = resultado.rows.map((item) => {
+      let estado = "Sin historial";
+
+      if (item.horometro_ultimo_cambio !== null) {
+        if (item.horas_restantes <= 0) {
+          estado = "Vencido";
+        } else if (item.horas_restantes <= 50) {
+          estado = "Próximo";
+        } else {
+          estado = "OK";
+        }
+      }
+
+      return {
+        ...item,
+        estado,
+      };
+    });
+
+    res.json(filtros);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar filtros especiales",
+    });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Servidor funcionando en http://localhost:3000");
 });

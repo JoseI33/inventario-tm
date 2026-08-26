@@ -33,6 +33,19 @@ function App() {
     },
   });
 
+  const [filtrosEspeciales, setFiltrosEspeciales] = useState({
+    secundario: {
+      componente_id: "",
+      cambiado: false,
+      motivo: "",
+    },
+    electrico: {
+      componente_id: "",
+      cambiado: false,
+      motivo: "",
+    },
+  });
+
   // EQUIPOS
   const [equipos, setEquipos] = useState([]);
   const [interno, setInterno] = useState("");
@@ -40,6 +53,7 @@ function App() {
 
   // SERVIS Y MANTENIMIENTO
   const [services, setServices] = useState([]);
+  const [filtrosEspecialesEstado, setFiltrosEspecialesEstado] = useState([]);
   const [mantenimientos, setMantenimientos] = useState([]);
   const [planMantenimiento, setPlanMantenimiento] = useState([]);
   const [historialHorometros, setHistorialHorometros] = useState([]);
@@ -72,6 +86,20 @@ function App() {
 
   const [mensajeNuevoEquipo, setMensajeNuevoEquipo] = useState("");
   const [equiposActivos, setEquiposActivos] = useState([]);
+
+  useEffect(() => {
+    if (!interno) return;
+
+    fetch(`http://localhost:3000/equipos/${interno}/filtros-especiales`)
+      .then((response) => response.json())
+      .then((data) => {
+        setFiltrosEspecialesEstado(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar filtros especiales:", error);
+        setFiltrosEspecialesEstado([]);
+      });
+  }, [interno]);
 
   useEffect(() => {
     if (!interno) return;
@@ -366,6 +394,16 @@ function App() {
     (item) => item.nombre === "SAE 90",
   );
 
+  const componenteSecundario = componentesConfig.find((item) =>
+    item.nombre.toLowerCase().includes("secundario"),
+  );
+
+  const componenteElectrico = componentesConfig.find(
+    (item) =>
+      item.nombre.toLowerCase().includes("eléctrico") ||
+      item.nombre.toLowerCase().includes("electrico"),
+  );
+
   const guardarConfiguracionMantenimiento = async () => {
     if (!configInterno) {
       setMensajeConfiguracion("Seleccioná un interno.");
@@ -374,6 +412,26 @@ function App() {
 
     if (!configPlan) {
       setMensajeConfiguracion("Seleccioná un plan de mantenimiento.");
+      return;
+    }
+
+    if (
+      filtrosEspeciales.secundario.cambiado &&
+      !filtrosEspeciales.secundario.motivo
+    ) {
+      setMensajeConfiguracion(
+        "Seleccioná el motivo del cambio del filtro secundario.",
+      );
+      return;
+    }
+
+    if (
+      filtrosEspeciales.electrico.cambiado &&
+      !filtrosEspeciales.electrico.motivo
+    ) {
+      setMensajeConfiguracion(
+        "Seleccioná el motivo del cambio del filtro eléctrico.",
+      );
       return;
     }
 
@@ -404,34 +462,55 @@ function App() {
       }
 
       if (
-  configMantenimientos.motor.fecha &&
-  configMantenimientos.motor.horometro
-) {
-  const responseMotor = await fetch(
-    `http://localhost:3000/equipos/${configInterno}/services`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        fecha: configMantenimientos.motor.fecha,
-        horometro: Number(
-          configMantenimientos.motor.horometro
-        ),
-      }),
-    }
-  );
+        configMantenimientos.motor.fecha &&
+        configMantenimientos.motor.horometro
+      ) {
+        const secundarios = [];
 
-  const dataMotor = await responseMotor.json();
+        if (componenteSecundario) {
+          secundarios.push({
+            componente_id: componenteSecundario.componente_id,
+            cambiado: filtrosEspeciales.secundario.cambiado,
+            motivo: filtrosEspeciales.secundario.cambiado
+              ? filtrosEspeciales.secundario.motivo
+              : null,
+          });
+        }
 
-  if (!responseMotor.ok) {
-    setMensajeConfiguracion(
-      dataMotor.error || "Error al guardar service de motor."
-    );
-    return;
-  }
-}
+        if (componenteElectrico) {
+          secundarios.push({
+            componente_id: componenteElectrico.componente_id,
+            cambiado: filtrosEspeciales.electrico.cambiado,
+            motivo: filtrosEspeciales.electrico.cambiado
+              ? filtrosEspeciales.electrico.motivo
+              : null,
+          });
+        }
+
+        const responseMotor = await fetch(
+          `http://localhost:3000/equipos/${configInterno}/service-completo`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              fecha: configMantenimientos.motor.fecha,
+              horometro: Number(configMantenimientos.motor.horometro),
+              secundarios,
+            }),
+          },
+        );
+
+        const dataMotor = await responseMotor.json();
+
+        if (!responseMotor.ok) {
+          setMensajeConfiguracion(
+            dataMotor.error || "Error al guardar el service.",
+          );
+          return;
+        }
+      }
 
       // 2. Preparar mantenimientos que tengan fecha + horómetro
       const registros = [
@@ -473,10 +552,10 @@ function App() {
       );
 
       setConfigMantenimientos({
-         motor: {
-    fecha: "",
-    horometro: "",
-  },
+        motor: {
+          fecha: "",
+          horometro: "",
+        },
         hidraulico: {
           componente_id: "",
           fecha: "",
@@ -929,6 +1008,115 @@ function App() {
               />
             </label>
           </div>
+          <div className="mantenimiento-card">
+            <h4>Filtros especiales</h4>
+
+            {componenteSecundario && (
+              <div>
+                <strong>Filtro aire secundario</strong>
+
+                <p>Frecuencia: {componenteSecundario.frecuencia_horas} hs</p>
+
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={filtrosEspeciales.secundario.cambiado}
+                    onChange={(e) =>
+                      setFiltrosEspeciales({
+                        ...filtrosEspeciales,
+                        secundario: {
+                          ...filtrosEspeciales.secundario,
+                          componente_id: componenteSecundario.componente_id,
+                          cambiado: e.target.checked,
+                          motivo: e.target.checked
+                            ? filtrosEspeciales.secundario.motivo
+                            : "",
+                        },
+                      })
+                    }
+                  />
+                  Cambiar filtro
+                </label>
+
+                {filtrosEspeciales.secundario.cambiado && (
+                  <select
+                    value={filtrosEspeciales.secundario.motivo}
+                    onChange={(e) =>
+                      setFiltrosEspeciales({
+                        ...filtrosEspeciales,
+                        secundario: {
+                          ...filtrosEspeciales.secundario,
+                          motivo: e.target.value,
+                        },
+                      })
+                    }
+                  >
+                    <option value="">Seleccionar motivo...</option>
+                    <option value="Por frecuencia">Por frecuencia</option>
+                    <option value="Sucio">Sucio</option>
+                    <option value="Dañado">Dañado</option>
+                    <option value="Decisión jefe de mecánicos">
+                      Decisión jefe de mecánicos
+                    </option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                )}
+              </div>
+            )}
+
+            {componenteElectrico && (
+              <div>
+                <strong>Filtro combustible eléctrico</strong>
+
+                <p>Frecuencia: {componenteElectrico.frecuencia_horas} hs</p>
+
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={filtrosEspeciales.electrico.cambiado}
+                    onChange={(e) =>
+                      setFiltrosEspeciales({
+                        ...filtrosEspeciales,
+                        electrico: {
+                          ...filtrosEspeciales.electrico,
+                          componente_id: componenteElectrico.componente_id,
+                          cambiado: e.target.checked,
+                          motivo: e.target.checked
+                            ? filtrosEspeciales.electrico.motivo
+                            : "",
+                        },
+                      })
+                    }
+                  />
+                  Cambiar filtro
+                </label>
+
+                {filtrosEspeciales.electrico.cambiado && (
+                  <select
+                    value={filtrosEspeciales.electrico.motivo}
+                    onChange={(e) =>
+                      setFiltrosEspeciales({
+                        ...filtrosEspeciales,
+                        electrico: {
+                          ...filtrosEspeciales.electrico,
+                          motivo: e.target.value,
+                        },
+                      })
+                    }
+                  >
+                    <option value="">Seleccionar motivo...</option>
+                    <option value="Por frecuencia">Por frecuencia</option>
+                    <option value="Sucio">Sucio</option>
+                    <option value="Dañado">Dañado</option>
+                    <option value="Decisión por el mecánico">
+                      Decisión por el mecánico
+                    </option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                )}
+              </div>
+            )}
+          </div>
 
           {configPlan && (
             <div className="mantenimientos-grid">
@@ -1199,6 +1387,90 @@ function App() {
 
               <hr />
 
+              <h3>Filtros 600 hs</h3>
+
+              {filtrosEspecialesEstado.length > 0 ? (
+                <div className="filtros-600-grid">
+                  {filtrosEspecialesEstado.map((item) => (
+                    <div
+                      className="mantenimiento-card"
+                      key={item.componente_id}
+                    >
+                      <h4>
+                        {item.componente === "Filtro aire secundario"
+                          ? "Filtro secundario"
+                          : "Filtro combustible eléctrico"}
+                      </h4>
+
+                      {item.horometro_ultimo_cambio !== null ? (
+                        <>
+                          <p>
+                            <strong>Último cambio:</strong>{" "}
+                            {item.horometro_ultimo_cambio} hs
+                          </p>
+
+                          <p>
+                            <strong>Fecha:</strong>{" "}
+                            {new Date(
+                              item.fecha_ultimo_cambio,
+                            ).toLocaleDateString("es-AR")}
+                          </p>
+
+                          {item.observaciones && (
+                            <p>
+                              <strong>Motivo por cambio:</strong>{" "}
+                              {item.observaciones.replace(
+                                "Cambio durante service: ",
+                                "",
+                              )}
+                            </p>
+                          )}
+
+                          <p>
+                            <strong>Frecuencia:</strong> {item.frecuencia_horas}{" "}
+                            hs
+                          </p>
+
+                          <p>
+                            <strong>Horas usadas:</strong> {item.horas_usadas}{" "}
+                            hs
+                          </p>
+
+                          <p>
+                            <strong>Próximo cambio:</strong>{" "}
+                            {item.proximo_cambio} hs
+                          </p>
+
+                          <p>
+                            <strong>
+                              {item.horas_restantes < 0
+                                ? "Vencido por:"
+                                : "Restante:"}
+                            </strong>{" "}
+                            {Math.abs(item.horas_restantes)} hs
+                          </p>
+
+                          <div
+                            className={`estado mantenimiento-${item.estado
+                              .toLowerCase()
+                              .replaceAll(" ", "-")}`}
+                          >
+                            {item.estado === "OK" && "✓ "}
+                            {item.estado === "Próximo" && "⚠ "}
+                            {item.estado === "Vencido" && "✕ "}
+                            {item.estado}
+                          </div>
+                        </>
+                      ) : (
+                        <p>Sin historial registrado.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No hay filtros especiales registrados.</p>
+              )}
+
               <h3>Mantenimientos anuales</h3>
 
               {mantenimientos.length > 0 ? (
@@ -1261,6 +1533,9 @@ function App() {
                               .toLowerCase()
                               .replaceAll(" ", "-")}`}
                           >
+                            {item.estado === "OK" && "✓ "}
+                            {item.estado === "Próximo" && "⚠ "}
+                            {item.estado === "Vencido" && "✕ "}
                             {item.estado}
                           </div>
                         </>
