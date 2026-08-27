@@ -859,6 +859,215 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
   }
 });
 
+app.put("/equipos/:interno/dar-de-baja", async (req, res) => {
+  const { interno } = req.params;
+
+  const {
+    fecha_fin,
+    horometro_fin,
+    motivo_baja,
+    ubicacion_actual,
+    observacion_baja,
+  } = req.body;
+
+  const client = await pool.connect();
+
+  try {
+    if (
+      !fecha_fin ||
+      !horometro_fin ||
+      !motivo_baja ||
+      !ubicacion_actual
+    ) {
+      return res.status(400).json({
+        error:
+          "Fecha, horómetro, motivo y ubicación son obligatorios.",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    const equipo = await client.query(
+      `
+      SELECT id
+      FROM equipos
+      WHERE interno = $1
+      `,
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Equipo no encontrado.",
+      });
+    }
+
+    const equipoId = equipo.rows[0].id;
+
+    const contratoActivo = await client.query(
+      `
+      SELECT id, horometro_inicio
+      FROM contratos_equipos
+      WHERE equipo_id = $1
+        AND activo = true
+      ORDER BY fecha_inicio DESC, id DESC
+      LIMIT 1
+      `,
+      [equipoId]
+    );
+
+    if (contratoActivo.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        error: "El equipo no tiene un contrato activo.",
+      });
+    }
+
+    const contrato = contratoActivo.rows[0];
+
+    if (
+      Number(horometro_fin) <
+      Number(contrato.horometro_inicio)
+    ) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        error:
+          "El horómetro de baja no puede ser menor al horómetro de inicio.",
+      });
+    }
+
+    const contratoActualizado = await client.query(
+      `
+      UPDATE contratos_equipos
+      SET
+        activo = false,
+        fecha_fin = $1,
+        horometro_fin = $2,
+        motivo_baja = $3,
+        observacion_baja = $4
+      WHERE id = $5
+      RETURNING *
+      `,
+      [
+        fecha_fin,
+        Number(horometro_fin),
+        motivo_baja,
+        observacion_baja || null,
+        contrato.id,
+      ]
+    );
+
+    await client.query(
+      `
+      UPDATE equipos
+      SET
+        ubicacion_actual = $1,
+        horometro_actual = $2
+      WHERE id = $3
+      `,
+      [
+        ubicacion_actual,
+        Number(horometro_fin),
+        equipoId,
+      ]
+    );
+
+    await client.query(
+      `
+      INSERT INTO horometros (
+        equipo_id,
+        fecha,
+        horometro
+      )
+      VALUES ($1, $2, $3)
+      `,
+      [
+        equipoId,
+        fecha_fin,
+        Number(horometro_fin),
+      ]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      mensaje: `Interno ${interno} dado de baja correctamente.`,
+      contrato: contratoActualizado.rows[0],
+      ubicacion_actual,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al dar de baja el equipo.",
+    });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/equipos-inactivos", async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT
+        e.interno,
+        e.tipo,
+        e.marca,
+        e.modelo,
+        e.horometro_actual,
+        e.ubicacion_actual,
+
+        c.empresa,
+        c.ubicacion AS ultima_ubicacion_trabajo,
+        c.fecha_inicio,
+        c.horometro_inicio,
+        c.fecha_fin,
+        c.horometro_fin,
+        c.motivo_baja,
+        c.observacion_baja,
+
+        (
+          c.horometro_fin - c.horometro_inicio
+        ) AS horas_trabajadas
+
+      FROM equipos e
+
+      JOIN LATERAL (
+        SELECT
+          c2.*
+        FROM contratos_equipos c2
+        WHERE c2.equipo_id = e.id
+          AND c2.activo = false
+        ORDER BY c2.fecha_fin DESC, c2.id DESC
+        LIMIT 1
+      ) c ON true
+
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM contratos_equipos ca
+        WHERE ca.equipo_id = e.id
+          AND ca.activo = true
+      )
+
+      ORDER BY CAST(e.interno AS INTEGER) ASC;
+    `);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar equipos inactivos",
+    });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Servidor funcionando en http://localhost:3000");
 });

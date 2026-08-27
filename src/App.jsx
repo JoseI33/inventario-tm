@@ -1,6 +1,5 @@
-import { useState } from "react";
 import "./App.css";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function App() {
   // CONFIGURACION DE MANTENIMIENTO
@@ -46,6 +45,23 @@ function App() {
     },
   });
 
+  const [equipoBaja, setEquipoBaja] = useState(null);
+
+  const [datosBaja, setDatosBaja] = useState({
+    fecha_fin: "",
+    horometro_fin: "",
+    motivo_baja: "",
+    ubicacion_actual: "",
+    observacion_baja: "",
+  });
+
+  const [mensajeBaja, setMensajeBaja] = useState("");
+
+  // EQUIPOS INACTIVOS
+  const [equiposInactivos, setEquiposInactivos] = useState([]);
+  // FORMULARIO DE BAJA
+  const formularioBajaRef = useRef(null);
+
   // EQUIPOS
   const [equipos, setEquipos] = useState([]);
   const [interno, setInterno] = useState("");
@@ -86,6 +102,17 @@ function App() {
 
   const [mensajeNuevoEquipo, setMensajeNuevoEquipo] = useState("");
   const [equiposActivos, setEquiposActivos] = useState([]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/equipos-inactivos")
+      .then((response) => response.json())
+      .then((data) => {
+        setEquiposInactivos(data);
+      })
+      .catch((error) => {
+        console.error("Error al cargar equipos inactivos:", error);
+      });
+  }, []);
 
   useEffect(() => {
     if (!interno) return;
@@ -579,6 +606,80 @@ function App() {
     }
   };
 
+  const confirmarBajaEquipo = async () => {
+    if (!equipoBaja) return;
+
+    if (
+      !datosBaja.fecha_fin ||
+      !datosBaja.horometro_fin ||
+      !datosBaja.motivo_baja ||
+      !datosBaja.ubicacion_actual
+    ) {
+      setMensajeBaja("Completá fecha, horómetro, motivo y ubicación.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/equipos/${equipoBaja.interno}/dar-de-baja`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fecha_fin: datosBaja.fecha_fin,
+            horometro_fin: Number(datosBaja.horometro_fin),
+            motivo_baja: datosBaja.motivo_baja,
+            ubicacion_actual: datosBaja.ubicacion_actual,
+            observacion_baja: datosBaja.observacion_baja,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeBaja(data.error || "No se pudo dar de baja el equipo.");
+        return;
+      }
+
+      const internoDadoDeBaja = equipoBaja.interno;
+
+      setEquiposActivos((actuales) =>
+        actuales.filter((equipo) => equipo.interno !== internoDadoDeBaja),
+      );
+
+      // Volvemos a consultar el backend
+      // para traer el registro completo del inactivo.
+      await cargarEquiposInactivos();
+
+      setMensajeBaja(
+        `Interno ${internoDadoDeBaja} dado de baja correctamente.`,
+      );
+
+      setEquipoBaja(null);
+    } catch (error) {
+      console.error(error);
+      setMensajeBaja("Error de conexión con el servidor.");
+    }
+  };
+
+  const cargarEquiposInactivos = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/equipos-inactivos");
+
+      if (!response.ok) {
+        throw new Error("Error al cargar equipos inactivos");
+      }
+
+      const data = await response.json();
+      setEquiposInactivos(data);
+    } catch (error) {
+      console.error("Error al cargar equipos inactivos:", error);
+    }
+  };
+
   return (
     <div className="app">
       <header>
@@ -612,6 +713,13 @@ function App() {
           >
             <h2>Configurar mantenimiento</h2>
             <p>Asignar planes y cargar históricos.</p>
+          </button>
+          <button
+            className="card"
+            onClick={() => setModulo("equipos-inactivos")}
+          >
+            <h2>Equipos Inactivos</h2>
+            <p>Equipos fuera de servicio y ubicación actual.</p>
           </button>
         </main>
       )}
@@ -652,6 +760,7 @@ function App() {
                   <th>Última visita</th>
                   <th>Hs última visita</th>
                   <th>Diferencia hs</th>
+                  <th>Acción</th>
                 </tr>
               </thead>
 
@@ -712,11 +821,209 @@ function App() {
                           : "-"}
                       </span>
                     </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+
+                          setEquipoBaja(equipo);
+
+                          setDatosBaja({
+                            fecha_fin: "",
+                            horometro_fin: equipo.horometro_actual || "",
+                            motivo_baja: "",
+                            ubicacion_actual: "",
+                            observacion_baja: "",
+                          });
+
+                          setMensajeBaja("");
+
+                          setTimeout(() => {
+                            formularioBajaRef.current?.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start",
+                            });
+                          }, 100);
+                        }}
+                      >
+                        Dar de baja
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {equipoBaja && (
+              <div className="form-baja" ref={formularioBajaRef}>
+                <h3>Dar de baja - Interno {equipoBaja.interno}</h3>
+
+                <label>
+                  Fecha de baja
+                  <input
+                    type="date"
+                    value={datosBaja.fecha_fin}
+                    onChange={(e) =>
+                      setDatosBaja({
+                        ...datosBaja,
+                        fecha_fin: e.target.value,
+                      })
+                    }
+                  />
+                </label>
+
+                <label>
+                  Horómetro de baja
+                  <input
+                    type="number"
+                    value={datosBaja.horometro_fin}
+                    onChange={(e) =>
+                      setDatosBaja({
+                        ...datosBaja,
+                        horometro_fin: e.target.value,
+                      })
+                    }
+                  />
+                </label>
+
+                <label>
+                  Motivo
+                  <select
+                    value={datosBaja.motivo_baja}
+                    onChange={(e) =>
+                      setDatosBaja({
+                        ...datosBaja,
+                        motivo_baja: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="Fin de contrato">Fin de contrato</option>
+                    <option value="Fin de temporada">Fin de temporada</option>
+                    <option value="Reparación">Reparación</option>
+                    <option value="Mantenimiento">Mantenimiento</option>
+                    <option value="Reemplazo">Reemplazo</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </label>
+
+                <label>
+                  Ubicación actual
+                  <select
+                    value={datosBaja.ubicacion_actual}
+                    onChange={(e) =>
+                      setDatosBaja({
+                        ...datosBaja,
+                        ubicacion_actual: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="Taller">Taller</option>
+                    <option value="Galpón">Galpón</option>
+                    <option value="Finca Sofia">Finca Sofia</option>
+                    <option value="Finca Salinas">Finca Salinas</option>
+                    <option value="Finca Lules">Finca Lules</option>
+                    <option value="Santa Isabel">Santa Isabel</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </label>
+
+                <label>
+                  Observaciones
+                  <textarea
+                    value={datosBaja.observacion_baja}
+                    onChange={(e) =>
+                      setDatosBaja({
+                        ...datosBaja,
+                        observacion_baja: e.target.value,
+                      })
+                    }
+                    placeholder="Observación opcional..."
+                  />
+                </label>
+
+                <button type="button" onClick={confirmarBajaEquipo}>
+                  Confirmar baja
+                </button>
+
+                <button type="button" onClick={() => setEquipoBaja(null)}>
+                  Cancelar
+                </button>
+
+                {mensajeBaja && <p>{mensajeBaja}</p>}
+              </div>
+            )}
           </div>
+        </main>
+      )}
+
+      {modulo === "equipos-inactivos" && (
+        <main className="panel">
+          <button className="volver" onClick={() => setModulo("inicio")}>
+            ← Volver
+          </button>
+
+          <h2>Equipos Inactivos</h2>
+
+          {equiposInactivos.length > 0 ? (
+            <div className="tabla-contenedor">
+              <table className="tabla-equipos">
+                <thead>
+                  <tr>
+                    <th>Interno</th>
+                    <th>Última empresa</th>
+                    <th>Fecha baja</th>
+                    <th>Motivo</th>
+                    <th>Observaciones</th>
+                    <th>Ubicación actual</th>
+                    <th>Hs baja</th>
+                    <th>Horas trabajadas</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {equiposInactivos.map((equipo) => (
+                    <tr key={equipo.interno}>
+                      <td>
+                        <strong>{equipo.interno}</strong>
+                      </td>
+
+                      <td>{equipo.empresa || "-"}</td>
+
+                      <td>
+                        {equipo.fecha_fin
+                          ? new Date(equipo.fecha_fin).toLocaleDateString(
+                              "es-AR",
+                            )
+                          : "-"}
+                      </td>
+
+                      <td>{equipo.motivo_baja || "-"}</td>
+
+                      <td>{equipo.observacion_baja || "-"}</td>
+
+                      <td>{equipo.ubicacion_actual || "-"}</td>
+
+                      <td>
+                        {equipo.horometro_fin !== null
+                          ? `${equipo.horometro_fin} hs`
+                          : "-"}
+                      </td>
+
+                      <td>
+                        {equipo.horas_trabajadas !== null
+                          ? `${equipo.horas_trabajadas} hs`
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>No hay equipos inactivos registrados.</p>
+          )}
         </main>
       )}
 
@@ -1213,7 +1520,7 @@ function App() {
               {/* REDUCTOR */}
               {componenteReductor && (
                 <div className="mantenimiento-card">
-                  <h4>Reductor</h4>
+                  <h4>Reductor y Diferencial</h4>
 
                   <p>Frecuencia: {componenteReductor.frecuencia_horas} hs</p>
 
