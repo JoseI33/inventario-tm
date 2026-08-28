@@ -302,10 +302,26 @@ app.get("/equipos-activos", async (req, res) => {
         c.ubicacion,
         c.fecha_inicio,
         c.horometro_inicio,
+
         h.fecha AS ultima_visita,
         h.horometro AS horometro_ultima_visita,
-        (h.horometro - c.horometro_inicio) AS diferencia_horas
+        (h.horometro - c.horometro_inicio) AS diferencia_horas,
+
+        s.fecha AS fecha_ultimo_service_motor,
+        s.horometro AS horometro_ultimo_service_motor,
+
+        CASE
+          WHEN s.horometro IS NULL THEN NULL
+          ELSE s.horometro + 300
+        END AS proximo_service_motor,
+
+        CASE
+          WHEN s.horometro IS NULL OR h.horometro IS NULL THEN NULL
+          ELSE (s.horometro + 300) - h.horometro
+        END AS horas_restantes_service_motor
+
       FROM contratos_equipos c
+
       JOIN equipos e
         ON e.id = c.equipo_id
 
@@ -319,7 +335,19 @@ app.get("/equipos-activos", async (req, res) => {
         LIMIT 1
       ) h ON true
 
+      LEFT JOIN LATERAL (
+        SELECT
+          s2.fecha,
+          s2.horometro
+        FROM services s2
+        WHERE s2.equipo_id = e.id
+          AND LOWER(s2.tipo) = 'motor'
+        ORDER BY s2.horometro DESC, s2.id DESC
+        LIMIT 1
+      ) s ON true
+
       WHERE c.activo = true
+
       ORDER BY CAST(e.interno AS INTEGER) ASC;
     `);
 

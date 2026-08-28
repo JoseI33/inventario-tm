@@ -57,6 +57,9 @@ function App() {
 
   const [mensajeBaja, setMensajeBaja] = useState("");
 
+  // ALERTA DE SERVICES POPUP
+  const [mostrarAlertaServices, setMostrarAlertaServices] = useState(false);
+
   // EQUIPOS INACTIVOS
   const [equiposInactivos, setEquiposInactivos] = useState([]);
   // FORMULARIO DE BAJA
@@ -680,6 +683,12 @@ function App() {
     }
   };
 
+  const equiposConAlertaService = equiposActivos.filter((equipo) => {
+    const horas = Number(equipo.horas_restantes_service_motor);
+
+    return equipo.horas_restantes_service_motor !== null && horas <= 50;
+  });
+
   return (
     <div className="app">
       <header>
@@ -698,9 +707,66 @@ function App() {
             <h2>Equipos</h2>
             <p>Horómetros, services y filtros.</p>
           </button>
-          <button className="card" onClick={() => setModulo("equipos-activos")}>
+          <button
+            className="card"
+            onClick={() => {
+              setMostrarAlertaServices(true);
+              setModulo("equipos-activos");
+            }}
+          >
             <h2>Equipos Alq/Serv.</h2>
             <p>Horómetros general, ubicación y empresas.</p>
+
+            {mostrarAlertaServices && (
+              <div className="alerta-services-overlay">
+                <div className="alerta-services-modal">
+                  <h3>⚠ Mantenimientos próximos</h3>
+
+                  {equiposActivos
+                    .filter((equipo) => {
+                      const horas = Number(
+                        equipo.horas_restantes_service_motor,
+                      );
+
+                      return (
+                        equipo.horas_restantes_service_motor !== null &&
+                        horas <= 50
+                      );
+                    })
+                    .map((equipo) => {
+                      const horas = Number(
+                        equipo.horas_restantes_service_motor,
+                      );
+
+                      return (
+                        <div
+                          key={equipo.interno}
+                          className="alerta-service-item"
+                        >
+                          <strong>Interno {equipo.interno}</strong>
+
+                          {horas <= 0 ? (
+                            <span className="service-vencido">
+                              ✕ Service vencido por {Math.abs(horas)} hs
+                            </span>
+                          ) : (
+                            <span className="service-proximo">
+                              ⚠ Faltan {horas} hs para el service
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                  <button
+                    type="button"
+                    onClick={() => setMostrarAlertaServices(false)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
           </button>
 
           <button className="card" onClick={() => setModulo("nuevo-equipo")}>
@@ -742,11 +808,54 @@ function App() {
 
       {modulo === "equipos-activos" && (
         <main className="panel">
-          <button className="volver" onClick={() => setModulo("inicio")}>
+          <button
+            className="volver"
+            onClick={() => {
+              setMostrarAlertaServices(false);
+              setModulo("inicio");
+            }}
+          >
             ← Volver
           </button>
 
           <h2>Equipos actualmente en actividad</h2>
+
+          {modulo === "equipos-activos" &&
+            mostrarAlertaServices &&
+            equiposConAlertaService.length > 0 && (
+              <div className="alerta-services-overlay">
+                <div className="alerta-services-modal">
+                  <h3>⚠ Mantenimientos próximos</h3>
+
+                  {equiposConAlertaService.map((equipo) => {
+                    const horas = Number(equipo.horas_restantes_service_motor);
+
+                    return (
+                      <div key={equipo.interno} className="alerta-service-item">
+                        <strong>Interno {equipo.interno}</strong>
+
+                        {horas <= 0 ? (
+                          <span className="service-vencido">
+                            ✕ Service vencido por {Math.abs(horas)} hs
+                          </span>
+                        ) : (
+                          <span className="service-proximo">
+                            ⚠ Faltan {horas} hs para el service
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => setMostrarAlertaServices(false)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
 
           <div className="tabla-contenedor">
             <table className="tabla-equipos">
@@ -760,6 +869,7 @@ function App() {
                   <th>Última visita</th>
                   <th>Hs última visita</th>
                   <th>Diferencia hs</th>
+                  <th>Service motor</th>
                   <th>Acción</th>
                 </tr>
               </thead>
@@ -805,7 +915,6 @@ function App() {
                         ? `${equipo.horometro_ultima_visita} hs`
                         : "-"}
                     </td>
-
                     <td>
                       <span
                         className={
@@ -820,6 +929,26 @@ function App() {
                           ? `${equipo.diferencia_horas} hs`
                           : "-"}
                       </span>
+                    </td>
+                    <td>
+                      {equipo.horas_restantes_service_motor === null ? (
+                        <span>-</span>
+                      ) : Number(equipo.horas_restantes_service_motor) <= 0 ? (
+                        <span className="service-vencido">
+                          ✕ Vencido{" "}
+                          {Math.abs(
+                            Number(equipo.horas_restantes_service_motor),
+                          )}{" "}
+                          hs
+                        </span>
+                      ) : Number(equipo.horas_restantes_service_motor) <=
+                        250 ? (
+                        <span className="service-proximo">
+                          ⚠ En {equipo.horas_restantes_service_motor} hs
+                        </span>
+                      ) : (
+                        <span className="service-ok">✓ OK</span>
+                      )}
                     </td>
                     <td>
                       <button
