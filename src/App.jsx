@@ -57,6 +57,10 @@ function App() {
 
   const [mensajeBaja, setMensajeBaja] = useState("");
 
+  // HISTORIAL DE TRABAJO
+  const [historialTrabajo, setHistorialTrabajo] = useState([]);
+  const [mostrarHistorialTrabajo, setMostrarHistorialTrabajo] = useState(false);
+
   // ALERTA DE SERVICES POPUP
   const [mostrarAlertaServices, setMostrarAlertaServices] = useState(false);
 
@@ -688,6 +692,27 @@ function App() {
 
     return equipo.horas_restantes_service_motor !== null && horas <= 50;
   });
+
+  const cargarHistorialTrabajo = async () => {
+    if (!interno) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/equipos/${interno}/historial-trabajo`,
+      );
+
+      if (!response.ok) {
+        throw new Error("Error al cargar historial");
+      }
+
+      const data = await response.json();
+
+      setHistorialTrabajo(data);
+      setMostrarHistorialTrabajo(true);
+    } catch (error) {
+      console.error("Error al cargar historial:", error);
+    }
+  };
 
   return (
     <div className="app">
@@ -1771,7 +1796,7 @@ function App() {
                 {mensajeHorometro && <p>{mensajeHorometro}</p>}
               </div>
               <hr />
-
+                    
               <h3>Historial de horómetros</h3>
 
               {historialHorometros.length > 0 ? (
@@ -1788,6 +1813,96 @@ function App() {
                 </div>
               ) : (
                 <p>No hay lecturas registradas.</p>
+              )}      
+
+<button type="button" onClick={cargarHistorialTrabajo}>
+                📋 Ver historial de trabajo
+              </button>
+              {mostrarHistorialTrabajo && (
+                <div className="historial-trabajo">
+                  <h3>Historial de trabajo - Interno {interno}</h3>
+
+                  {historialTrabajo.length > 0 ? (
+                    <div className="tabla-contenedor">
+                      <table className="tabla-equipos">
+                        <thead>
+                          <tr>
+                            <th>Empresa</th>
+                            <th>Ubicación</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th>Hs inicio</th>
+                            <th>Hs fin</th>
+                            <th>Hs trabajadas</th>
+                            <th>Estado</th>
+                            <th>Motivo baja</th>
+                            <th>Observaciones</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {historialTrabajo.map((registro) => (
+                            <tr key={registro.id}>
+                              <td>{registro.empresa || "-"}</td>
+                              <td>{registro.ubicacion || "-"}</td>
+
+                              <td>
+                                {registro.fecha_inicio
+                                  ? new Date(
+                                      registro.fecha_inicio,
+                                    ).toLocaleDateString("es-AR")
+                                  : "-"}
+                              </td>
+
+                              <td>
+                                {registro.fecha_fin
+                                  ? new Date(
+                                      registro.fecha_fin,
+                                    ).toLocaleDateString("es-AR")
+                                  : "-"}
+                              </td>
+
+                              <td>
+                                {registro.horometro_inicio !== null
+                                  ? `${registro.horometro_inicio} hs`
+                                  : "-"}
+                              </td>
+
+                              <td>
+                                {registro.horometro_fin !== null
+                                  ? `${registro.horometro_fin} hs`
+                                  : "-"}
+                              </td>
+
+                              <td>
+                                {registro.horas_trabajadas !== null
+                                  ? `${registro.horas_trabajadas} hs`
+                                  : "-"}
+                              </td>
+
+                              <td>
+                                {registro.activo ? "Activo" : "Finalizado"}
+                              </td>
+
+                              <td>{registro.motivo_baja || "-"}</td>
+
+                              <td>{registro.observacion_baja || "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p>No hay historial registrado para este interno.</p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setMostrarHistorialTrabajo(false)}
+                  >
+                    Cerrar historial
+                  </button>
+                </div>
               )}
 
               <h3>Service de motor</h3>

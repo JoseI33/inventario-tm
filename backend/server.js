@@ -1096,6 +1096,53 @@ app.get("/equipos-inactivos", async (req, res) => {
   }
 });
 
+app.get("/equipos/:interno/historial-trabajo", async (req, res) => {
+  const { interno } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        c.id,
+        e.interno,
+        c.empresa,
+        c.ubicacion,
+        c.fecha_inicio,
+        c.fecha_fin,
+        c.horometro_inicio,
+        c.horometro_fin,
+        c.activo,
+        c.motivo_baja,
+        c.observacion_baja,
+
+        CASE
+          WHEN c.horometro_fin IS NOT NULL
+          THEN c.horometro_fin - c.horometro_inicio
+          ELSE NULL
+        END AS horas_trabajadas
+
+      FROM contratos_equipos c
+
+      JOIN equipos e
+        ON e.id = c.equipo_id
+
+      WHERE e.interno = $1
+
+      ORDER BY c.fecha_inicio DESC, c.id DESC;
+      `,
+      [interno]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error al consultar historial:", error);
+
+    res.status(500).json({
+      error: "Error al consultar historial del equipo",
+    });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Servidor funcionando en http://localhost:3000");
 });
