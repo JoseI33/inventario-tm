@@ -714,40 +714,199 @@ function App() {
     }
   };
 
-  return (
-    <div className="app">
-      <header>
-        <h1>TM ROLDAN</h1>
-        <p>Sistema Técnico</p>
-      </header>
+ return (
+
+  <div className="app-layout">
+
+    {/* ================================= */}
+    {/* MENÚ LATERAL GENERAL */}
+    {/* ================================= */}
+
+    <aside className="sidebar">
+
+      <div className="sidebar-header">
+        <h2>TM ROLDAN</h2>
+        <span>Gestión de Maquinaria</span>
+      </div>
+
+      <nav className="sidebar-menu">
+
+        <button
+          className={`sidebar-item ${modulo === "inicio" ? "activo" : ""}`}
+          onClick={() => setModulo("inicio")}
+        >
+          🏠 Dashboard
+        </button>
+
+        <button
+          className={`sidebar-item ${
+            modulo === "equipos-activos" ? "activo" : ""
+          }`}
+          onClick={() => {
+            setMostrarAlertaServices(true);
+            setModulo("equipos-activos");
+          }}
+        >
+          🚜 Equipos Activos
+        </button>
+
+        <button
+          className={`sidebar-item ${
+            modulo === "equipos-inactivos" ? "activo" : ""
+          }`}
+          onClick={() => setModulo("equipos-inactivos")}
+        >
+          ⛔ Equipos Inactivos
+        </button>
+
+        <button
+          className={`sidebar-item ${
+            modulo === "historial-equipos" ? "activo" : ""
+          }`}
+          onClick={() => setModulo("historial-equipos")}
+        >
+          📋 Historial de Máquinas
+        </button>
+
+        <button
+          className={`sidebar-item ${
+            modulo === "inventario" ? "activo" : ""
+          }`}
+          onClick={() => setModulo("inventario")}
+        >
+          🏗 Inventario de Máquinas
+        </button>
+
+        <button
+          className={`sidebar-item ${
+            modulo === "equipos" ? "activo" : ""
+          }`}
+          onClick={() => setModulo("equipos")}
+        >
+          🔧 Equipos / Mantenimiento
+        </button>
+
+        <button
+          className={`sidebar-item ${
+            modulo === "nuevo-equipo" ? "activo" : ""
+          }`}
+          onClick={() => setModulo("nuevo-equipo")}
+        >
+          ➕ Nuevo Equipo
+        </button>
+
+        <button
+          className={`sidebar-item ${
+            modulo === "config-mantenimiento" ? "activo" : ""
+          }`}
+          onClick={() => setModulo("config-mantenimiento")}
+        >
+          ⚙ Configurar Mantenimiento
+        </button>
+
+      </nav>
+
+    </aside>
+
+
+    {/* ================================= */}
+    {/* CONTENIDO GENERAL */}
+    {/* ================================= */}
+
+    <div className="app-content">
 
       {modulo === "inicio" && (
-        <main className="cards">
-          <button className="card" onClick={() => setModulo("inventario")}>
-            <h2>Inventario</h2>
-            <p>Buscar repuestos, códigos y ubicaciones.</p>
-          </button>
+        <main className="dashboard-main">
 
-          <button className="card" onClick={() => setModulo("equipos")}>
-            <h2>Equipos</h2>
-            <p>Horómetros, services y filtros.</p>
-          </button>
-          <button
-            className="card"
-            onClick={() => {
-              setMostrarAlertaServices(true);
-              setModulo("equipos-activos");
-            }}
-          >
-            <h2>Equipos Alq/Serv.</h2>
-            <p>Horómetros general, ubicación y empresas.</p>
+          {/* CONTENIDO PRINCIPAL */}
 
-            {mostrarAlertaServices && (
-              <div className="alerta-services-overlay">
-                <div className="alerta-services-modal">
-                  <h3>⚠ Mantenimientos próximos</h3>
+            <div className="dashboard-header">
+              <div>
+                <h1>Dashboard</h1>
+                <p>Estado general de la flota</p>
+              </div>
+            </div>
 
-                  {equiposActivos
+            {/* TARJETAS DE RESUMEN */}
+            
+            <section className="dashboard-resumen">
+              <div className="resumen-card">
+                <span className="resumen-titulo">Equipos Activos</span>
+
+                <strong>{equiposActivos.length}</strong>
+
+                <small>Actualmente trabajando</small>
+              </div>
+
+              <div className="resumen-card">
+                <span className="resumen-titulo">Equipos Inactivos</span>
+
+                <strong>{equiposInactivos.length}</strong>
+
+                <small>Fuera de operación</small>
+              </div>
+
+              <div className="resumen-card">
+                <span className="resumen-titulo">Total de equipos</span>
+
+                <strong>{equipos.length}</strong>
+
+                <small>Registrados en sistema</small>
+              </div>
+
+              <div className="resumen-card alerta">
+                <span className="resumen-titulo">Alertas de Service</span>
+
+                <strong>
+                  {
+                    equiposActivos.filter((equipo) => {
+                      const horas = Number(
+                        equipo.horas_restantes_service_motor,
+                      );
+
+                      return (
+                        equipo.horas_restantes_service_motor !== null &&
+                        horas <= 50
+                      );
+                    }).length
+                  }
+                </strong>
+
+                <small>Próximos o vencidos</small>
+              </div>
+            </section>
+
+            {/* ALERTAS */}
+            <section className="dashboard-seccion">
+              <div className="dashboard-seccion-header">
+                <div>
+                  <h2>Mantenimiento</h2>
+                  <p>Services próximos y vencidos</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="boton-ver"
+                  onClick={() => {
+                    setMostrarAlertaServices(true);
+                    setModulo("equipos-activos");
+                  }}
+                >
+                  Ver equipos
+                </button>
+              </div>
+
+              <div className="dashboard-alertas">
+                {equiposActivos.filter((equipo) => {
+                  const horas = Number(equipo.horas_restantes_service_motor);
+
+                  return (
+                    equipo.horas_restantes_service_motor !== null && horas <= 50
+                  );
+                }).length === 0 ? (
+                  <div className="sin-alertas">✓ No hay services próximos</div>
+                ) : (
+                  equiposActivos
                     .filter((equipo) => {
                       const horas = Number(
                         equipo.horas_restantes_service_motor,
@@ -758,6 +917,7 @@ function App() {
                         horas <= 50
                       );
                     })
+                    .slice(0, 5)
                     .map((equipo) => {
                       const horas = Number(
                         equipo.horas_restantes_service_motor,
@@ -766,54 +926,59 @@ function App() {
                       return (
                         <div
                           key={equipo.interno}
-                          className="alerta-service-item"
+                          className="dashboard-alerta-item"
                         >
-                          <strong>Interno {equipo.interno}</strong>
+                          <div>
+                            <strong>Interno {equipo.interno}</strong>
+
+                            <span>
+                              {equipo.marca} {equipo.modelo}
+                            </span>
+                          </div>
 
                           {horas <= 0 ? (
                             <span className="service-vencido">
-                              ✕ Service vencido por {Math.abs(horas)} hs
+                              ✕ Vencido {Math.abs(horas)} hs
                             </span>
                           ) : (
                             <span className="service-proximo">
-                              ⚠ Faltan {horas} hs para el service
+                              ⚠ Faltan {horas} hs
                             </span>
                           )}
                         </div>
                       );
-                    })}
+                    })
+                )}
+              </div>
+            </section>
 
-                  <button
-                    type="button"
-                    onClick={() => setMostrarAlertaServices(false)}
-                  >
-                    Cerrar
-                  </button>
+            {/* ACCESOS RÁPIDOS */}
+            <section className="dashboard-seccion">
+              <div className="dashboard-seccion-header">
+                <div>
+                  <h2>Accesos rápidos</h2>
+                  <p>Operaciones frecuentes</p>
                 </div>
               </div>
-            )}
-          </button>
 
-          <button className="card" onClick={() => setModulo("nuevo-equipo")}>
-            <h2>Nuevo equipo</h2>
-            <p>Registrar una nueva máquina en el sistema.</p>
-          </button>
-          <button
-            className="card"
-            onClick={() => setModulo("config-mantenimiento")}
-          >
-            <h2>Configurar mantenimiento</h2>
-            <p>Asignar planes y cargar históricos.</p>
-          </button>
-          <button
-            className="card"
-            onClick={() => setModulo("equipos-inactivos")}
-          >
-            <h2>Equipos Inactivos</h2>
-            <p>Equipos fuera de servicio y ubicación actual.</p>
-          </button>
-        </main>
+              <div className="dashboard-accesos">
+                <button onClick={() => setModulo("nuevo-equipo")}>
+                  ＋ Registrar equipo
+                </button>
+
+                <button onClick={() => setModulo("equipos")}>
+                  🔧 Consultar mantenimiento
+                </button>
+
+                <button onClick={() => setModulo("inventario")}>
+                  🏗 Ver inventario
+                </button>
+              </div>
+            </section>
+          </main>
+      
       )}
+
 
       {modulo === "inventario" && (
         <main className="panel">
@@ -1796,7 +1961,7 @@ function App() {
                 {mensajeHorometro && <p>{mensajeHorometro}</p>}
               </div>
               <hr />
-                    
+
               <h3>Historial de horómetros</h3>
 
               {historialHorometros.length > 0 ? (
@@ -1813,9 +1978,9 @@ function App() {
                 </div>
               ) : (
                 <p>No hay lecturas registradas.</p>
-              )}      
+              )}
 
-<button type="button" onClick={cargarHistorialTrabajo}>
+              <button type="button" onClick={cargarHistorialTrabajo}>
                 📋 Ver historial de trabajo
               </button>
               {mostrarHistorialTrabajo && (
@@ -2127,6 +2292,8 @@ function App() {
           )}
         </main>
       )}
+    </div>
+
     </div>
   );
 }
