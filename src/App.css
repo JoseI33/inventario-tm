@@ -705,3 +705,12 @@ header p {
   }
 
 }
+
+.sidebar-logo {
+  width: 160px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 10px;
+}
