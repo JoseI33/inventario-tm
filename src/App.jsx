@@ -58,9 +58,16 @@ function App() {
 
   const [mensajeBaja, setMensajeBaja] = useState("");
 
+  // FILTROS DE HISTORIAL DE TRABAJO
+  const [filtroInternoHistorial, setFiltroInternoHistorial] = useState("");
+  const [filtroEmpresaHistorial, setFiltroEmpresaHistorial] = useState("");
+  const [filtroTemporadaHistorial, setFiltroTemporadaHistorial] = useState("");
+  const [filtroTipoHistorial, setFiltroTipoHistorial] = useState("");
+
   // HISTORIAL DE TRABAJO
   const [historialTrabajo, setHistorialTrabajo] = useState([]);
   const [mostrarHistorialTrabajo, setMostrarHistorialTrabajo] = useState(false);
+  const [historialEquipos, setHistorialEquipos] = useState([]);
 
   // ALERTA DE SERVICES POPUP
   const [mostrarAlertaServices, setMostrarAlertaServices] = useState(false);
@@ -782,12 +789,79 @@ function App() {
     }
   };
 
+  const cargarHistorialEquipos = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/historial-equipos");
+
+      if (!response.ok) {
+        throw new Error("Error al cargar historial general");
+      }
+
+      const data = await response.json();
+
+      setHistorialEquipos(data);
+    } catch (error) {
+      console.error("Error al cargar historial general:", error);
+    }
+  };
+
+  const normalizarEmpresa = (nombre) =>
+    nombre.trim().toLowerCase().replace(/\s+/g, " ");
+
+  const internosHistorial = [
+    ...new Set(historialEquipos.map((registro) => registro.interno)),
+  ].sort((a, b) => Number(a) - Number(b));
+
+  const empresasHistorial = [
+    ...new Map(
+      historialEquipos
+        .filter((registro) => registro.empresa)
+        .map((registro) => {
+          const nombreLimpio = registro.empresa.trim().replace(/\s+/g, " ");
+       console.log("nombreLimpio", nombreLimpio);
+          return [normalizarEmpresa(nombreLimpio), nombreLimpio];
+        }),
+    ).values(),
+  ].sort((a, b) => a.localeCompare(b));
+
+  const temporadasHistorial = [
+    ...new Set(
+      historialEquipos
+        .filter((registro) => registro.fecha_inicio)
+        .map((registro) => new Date(registro.fecha_inicio).getFullYear()),
+    ),
+  ].sort((a, b) => b - a);
+
+  const historialEquiposFiltrado = historialEquipos.filter((registro) => {
+    const coincideInterno =
+      !filtroInternoHistorial ||
+      String(registro.interno) === String(filtroInternoHistorial);
+
+    const coincideEmpresa =
+      !filtroEmpresaHistorial ||
+      normalizarEmpresa(registro.empresa || "") ===
+        normalizarEmpresa(filtroEmpresaHistorial);
+
+    const coincideTemporada =
+      !filtroTemporadaHistorial ||
+      (registro.fecha_inicio &&
+        new Date(registro.fecha_inicio).getFullYear() ===
+          Number(filtroTemporadaHistorial));
+
+    const coincideTipo =
+      !filtroTipoHistorial || registro.tipo === filtroTipoHistorial;
+
+    return (
+      coincideInterno && coincideEmpresa && coincideTemporada && coincideTipo
+    );
+  });
+
+  
   return (
     <div className="app-layout">
       {/* ================================= */}
       {/* MENÚ LATERAL GENERAL */}
       {/* ================================= */}
-
       <aside className="sidebar">
         <div className="sidebar-header">
           <img src={logoTM} alt="Logo TM" className="sidebar-logo" />
@@ -827,7 +901,10 @@ function App() {
             className={`sidebar-item ${
               modulo === "historial-equipos" ? "activo" : ""
             }`}
-            onClick={() => setModulo("historial-equipos")}
+            onClick={async () => {
+              await cargarHistorialEquipos();
+              setModulo("historial-equipos");
+            }}
           >
             📋 Historial de Máquinas
           </button>
@@ -1425,6 +1502,153 @@ function App() {
               </div>
             ) : (
               <p>No hay equipos inactivos registrados.</p>
+            )}
+          </main>
+        )}
+
+        {modulo === "historial-equipos" && (
+          <main className="panel">
+            <h2>Historial de Máquinas</h2>
+
+            <div className="filtros-historial">
+              <select
+                value={filtroInternoHistorial}
+                onChange={(e) => setFiltroInternoHistorial(e.target.value)}
+              >
+                <option value="">Todos los internos</option>
+
+                {internosHistorial.map((interno) => (
+                  <option key={interno} value={interno}>
+                    Interno {interno}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroTipoHistorial}
+                onChange={(e) => setFiltroTipoHistorial(e.target.value)}
+              >
+                <option value="">Todos los tipos</option>
+                <option value="Autoelevador">Autoelevador</option>
+                <option value="Tracto elevador">Tracto elevador</option>
+                <option value="Tractor">Tractor</option>
+              </select>
+
+              <select
+                value={filtroEmpresaHistorial}
+                onChange={(e) => setFiltroEmpresaHistorial(e.target.value)}
+              >
+                <option value="">Todas las empresas</option>
+
+                {empresasHistorial.map((empresa) => (
+                  <option key={empresa} value={empresa}>
+                    {empresa}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroTemporadaHistorial}
+                onChange={(e) => setFiltroTemporadaHistorial(e.target.value)}
+              >
+                <option value="">Todas las temporadas</option>
+
+                {temporadasHistorial.map((temporada) => (
+                  <option key={temporada} value={temporada}>
+                    Temporada {temporada}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFiltroInternoHistorial("");
+                  setFiltroEmpresaHistorial("");
+                  setFiltroTemporadaHistorial("");
+                  setFiltroTipoHistorial("");
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+
+            {historialEquiposFiltrado.length > 0 ? (
+              <div className="tabla-contenedor">
+                <table className="tabla-equipos">
+                  <thead>
+                    <tr>
+                      <th>Interno</th>
+                      <th>Empresa</th>
+                      <th>Ubicación</th>
+                      <th>Inicio</th>
+                      <th>Fin</th>
+                      <th>Hs inicio</th>
+                      <th>Hs fin</th>
+                      <th>Hs trabajadas</th>
+                      <th>Estado</th>
+                      <th>Motivo baja</th>
+                      <th>Observaciones</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {historialEquiposFiltrado.map((registro) => (
+                      <tr key={registro.id}>
+                        <td>
+                          <strong>{registro.interno}</strong>
+                        </td>
+
+                        <td>{registro.empresa || "-"}</td>
+
+                        <td>{registro.ubicacion || "-"}</td>
+
+                        <td>
+                          {registro.fecha_inicio
+                            ? new Date(
+                                registro.fecha_inicio,
+                              ).toLocaleDateString("es-AR")
+                            : "-"}
+                        </td>
+
+                        <td>
+                          {registro.fecha_fin
+                            ? new Date(registro.fecha_fin).toLocaleDateString(
+                                "es-AR",
+                              )
+                            : "-"}
+                        </td>
+
+                        <td>
+                          {registro.horometro_inicio !== null
+                            ? `${registro.horometro_inicio} hs`
+                            : "-"}
+                        </td>
+
+                        <td>
+                          {registro.horometro_fin !== null
+                            ? `${registro.horometro_fin} hs`
+                            : "-"}
+                        </td>
+
+                        <td>
+                          {registro.horas_trabajadas !== null
+                            ? `${registro.horas_trabajadas} hs`
+                            : "-"}
+                        </td>
+
+                        <td>{registro.activo ? "Activo" : "Finalizado"}</td>
+
+                        <td>{registro.motivo_baja || "-"}</td>
+
+                        <td>{registro.observacion_baja || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p>No hay movimientos registrados.</p>
             )}
           </main>
         )}

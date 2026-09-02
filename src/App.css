@@ -714,3 +714,17 @@ header p {
   display: block;
   margin: 0 auto 10px;
 }
+
+.filtros-historial {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.filtros-historial select,
+.filtros-historial button {
+  min-width: 160px;
+}
