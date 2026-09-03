@@ -63,6 +63,7 @@ function App() {
   const [filtroEmpresaHistorial, setFiltroEmpresaHistorial] = useState("");
   const [filtroTemporadaHistorial, setFiltroTemporadaHistorial] = useState("");
   const [filtroTipoHistorial, setFiltroTipoHistorial] = useState("");
+  const [filtroMotivoHistorial, setFiltroMotivoHistorial] = useState("");
 
   // HISTORIAL DE TRABAJO
   const [historialTrabajo, setHistorialTrabajo] = useState([]);
@@ -103,6 +104,7 @@ function App() {
     ubicacion: "",
     fecha_inicio: "",
     horometro_inicio: "",
+    tipo_contrato: "",
   });
 
   // NUEVO EQUIPO
@@ -818,7 +820,7 @@ function App() {
         .filter((registro) => registro.empresa)
         .map((registro) => {
           const nombreLimpio = registro.empresa.trim().replace(/\s+/g, " ");
-       console.log("nombreLimpio", nombreLimpio);
+          console.log("nombreLimpio", nombreLimpio);
           return [normalizarEmpresa(nombreLimpio), nombreLimpio];
         }),
     ).values(),
@@ -851,12 +853,37 @@ function App() {
     const coincideTipo =
       !filtroTipoHistorial || registro.tipo === filtroTipoHistorial;
 
+    const coincideMotivo =
+      !filtroMotivoHistorial || registro.motivo_baja === filtroMotivoHistorial;
+
     return (
-      coincideInterno && coincideEmpresa && coincideTemporada && coincideTipo
+      coincideInterno &&
+      coincideTipo &&
+      coincideEmpresa &&
+      coincideTemporada &&
+      coincideMotivo
     );
   });
 
-  
+  const resumenHistorial = {
+    movimientos: historialEquiposFiltrado.length,
+
+    maquinas: new Set(
+      historialEquiposFiltrado.map((registro) => registro.interno),
+    ).size,
+
+    empresas: new Set(
+      historialEquiposFiltrado
+        .map((registro) => normalizarEmpresa(registro.empresa || ""))
+        .filter(Boolean),
+    ).size,
+
+    horasTrabajadas: historialEquiposFiltrado.reduce(
+      (total, registro) => total + (Number(registro.horas_trabajadas) || 0),
+      0,
+    ),
+  };
+
   return (
     <div className="app-layout">
       {/* ================================= */}
@@ -1355,8 +1382,10 @@ function App() {
                       }
                     >
                       <option value="">Seleccionar...</option>
-                      <option value="Fin de contrato">Fin de contrato</option>
-                      <option value="Fin de temporada">Fin de temporada</option>
+                      <option value="Fin de mov. de carga">
+                        Fin de mov. de carga
+                      </option>
+                      <option value="Fin de campaña">Fin de campaña</option>
                       <option value="Reparación">Reparación</option>
                       <option value="Mantenimiento">Mantenimiento</option>
                       <option value="Reemplazo">Reemplazo</option>
@@ -1560,6 +1589,21 @@ function App() {
                 ))}
               </select>
 
+              <select
+                value={filtroMotivoHistorial}
+                onChange={(e) => setFiltroMotivoHistorial(e.target.value)}
+              >
+                <option value="">Todos los motivos</option>
+                <option value="Fin de mov. de carga">
+                  Fin de mov. de carga
+                </option>
+                <option value="Fin de campaña">Fin de campaña</option>
+                <option value="Reparación">Reparación</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Reemplazo">Reemplazo</option>
+                <option value="Otro">Otro</option>
+              </select>
+
               <button
                 type="button"
                 onClick={() => {
@@ -1567,10 +1611,35 @@ function App() {
                   setFiltroEmpresaHistorial("");
                   setFiltroTemporadaHistorial("");
                   setFiltroTipoHistorial("");
+                  setFiltroMotivoHistorial("");
                 }}
               >
                 Limpiar filtros
               </button>
+            </div>
+
+            <div className="resumen-historial">
+              <div className="resumen-historial-card">
+                <span>Movimientos</span>
+                <strong>{resumenHistorial.movimientos}</strong>
+              </div>
+
+              <div className="resumen-historial-card">
+                <span>Máquinas</span>
+                <strong>{resumenHistorial.maquinas}</strong>
+              </div>
+
+              <div className="resumen-historial-card">
+                <span>Empresas</span>
+                <strong>{resumenHistorial.empresas}</strong>
+              </div>
+
+              <div className="resumen-historial-card">
+                <span>Horas trabajadas</span>
+                <strong>
+                  {resumenHistorial.horasTrabajadas.toLocaleString("es-AR")} hs
+                </strong>
+              </div>
             </div>
 
             {historialEquiposFiltrado.length > 0 ? (
@@ -1842,6 +1911,20 @@ function App() {
                 />
               </label>
             </div>
+            <select
+              value={nuevoContrato.tipo_contrato}
+              onChange={(e) =>
+                setNuevoContrato({
+                  ...nuevoContrato,
+                  tipo_contrato: e.target.value,
+                })
+              }
+            >
+              <option value="">Seleccionar tipo</option>
+              <option value="Alquiler">Alquiler</option>
+              <option value="Movimiento de carga">Movimiento de carga</option>
+              <option value="Servicio agricola">Servicio agricola</option>
+            </select>
             <button
               type="button"
               onClick={guardarContrato}

@@ -458,6 +458,7 @@ app.post("/contratos", async (req, res) => {
         ubicacion,
         fecha_inicio,
         horometro_inicio,
+        tipo_contrato,
         activo
       )
       VALUES ($1, $2, $3, $4, $5, true)
