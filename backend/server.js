@@ -430,10 +430,11 @@ app.post("/contratos", async (req, res) => {
     ubicacion,
     fecha_inicio,
     horometro_inicio,
+    tipo_contrato,
   } = req.body;
 
   try {
-    if (!interno || !empresa || !fecha_inicio || !horometro_inicio) {
+    if (!interno || !empresa || !fecha_inicio || !horometro_inicio || !tipo_contrato) {
       return res.status(400).json({
         error: "Completá los campos obligatorios del contrato.",
       });
@@ -461,7 +462,7 @@ app.post("/contratos", async (req, res) => {
         tipo_contrato,
         activo
       )
-      VALUES ($1, $2, $3, $4, $5, true)
+      VALUES ($1, $2, $3, $4, $5, $6, true)
       RETURNING *
       `,
       [
@@ -470,6 +471,7 @@ app.post("/contratos", async (req, res) => {
         ubicacion || null,
         fecha_inicio,
         Number(horometro_inicio),
+        tipo_contrato || null,
       ]
     );
 
@@ -1157,6 +1159,7 @@ app.get("/historial-equipos", async (req, res) => {
         c.fecha_fin,
         c.horometro_inicio,
         c.horometro_fin,
+        c.tipo_contrato,
         c.activo,
         c.motivo_baja,
         c.observacion_baja,

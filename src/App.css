@@ -767,3 +767,22 @@ header p {
     grid-template-columns: 1fr;
   }
 }
+
+.buscador-interno-historial {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 16px;
+}
+
+.buscador-interno-historial input {
+  width: 260px;
+  padding: 9px 12px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.buscador-interno-historial input:focus {
+  outline: none;
+  border-color: #666;
+}
