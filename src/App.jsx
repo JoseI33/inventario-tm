@@ -789,7 +789,6 @@ function App() {
   const normalizarEmpresa = (nombre) =>
     nombre.trim().toLowerCase().replace(/\s+/g, " ");
 
- 
   const empresasHistorial = [
     ...new Map(
       historialEquipos
@@ -928,9 +927,11 @@ function App() {
 
           <button
             className={`sidebar-item ${modulo === "equipos" ? "activo" : ""}`}
-            onClick={() => setModulo("equipos")}
+            onClick={() => {
+              setModulo("equipos");
+            }}
           >
-            🔧 Equipos / Mantenimiento
+            🔧 Equipo / Mantenimiento
           </button>
 
           <button
