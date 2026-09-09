@@ -6,45 +6,9 @@ function App() {
   // CONFIGURACION DE MANTENIMIENTO
   const [configInterno, setConfigInterno] = useState("");
   const [configPlan, setConfigPlan] = useState("");
-
-  const [planesMantenimiento, setPlanesMantenimiento] = useState([]);
+  const [configPlanNombre, setConfigPlanNombre] = useState("");
   const [componentesConfig, setComponentesConfig] = useState([]);
   const [mensajeConfiguracion, setMensajeConfiguracion] = useState("");
-
-  const [configMantenimientos, setConfigMantenimientos] = useState({
-    motor: {
-      fecha: "",
-      horometro: "",
-    },
-    hidraulico: {
-      componente_id: "",
-      fecha: "",
-      horometro: "",
-    },
-    caja: {
-      componente_id: "",
-      fecha: "",
-      horometro: "",
-    },
-    reductor: {
-      componente_id: "",
-      fecha: "",
-      horometro: "",
-    },
-  });
-
-  const [filtrosEspeciales, setFiltrosEspeciales] = useState({
-    secundario: {
-      componente_id: "",
-      cambiado: false,
-      motivo: "",
-    },
-    electrico: {
-      componente_id: "",
-      cambiado: false,
-      motivo: "",
-    },
-  });
 
   const [equipoBaja, setEquipoBaja] = useState(null);
 
@@ -57,6 +21,8 @@ function App() {
   });
 
   const [mensajeBaja, setMensajeBaja] = useState("");
+
+  const [configComponentes, setConfigComponentes] = useState({});
 
   // FILTROS DE HISTORIAL DE TRABAJO
   const [filtroInternoHistorial, setFiltroInternoHistorial] = useState("");
@@ -159,18 +125,7 @@ function App() {
       });
   }, [interno]);
 
-  useEffect(() => {
-    fetch("http://localhost:3000/planes-mantenimiento")
-      .then((response) => response.json())
-      .then((data) => {
-        setPlanesMantenimiento(data);
-      })
-      .catch((error) => {
-        console.error("Error al cargar planes:", error);
-      });
-  }, []);
-
-  useEffect(() => {
+   useEffect(() => {
     fetch("http://localhost:3000/equipos-activos")
       .then((response) => response.json())
       .then((data) => {
@@ -430,28 +385,6 @@ function App() {
     }
   };
 
-  const componenteHidraulico = componentesConfig.find(
-    (item) => item.nombre === "Filtro hidráulico",
-  );
-
-  const componenteCaja = componentesConfig.find(
-    (item) => item.nombre === "Filtro de caja",
-  );
-
-  const componenteReductor = componentesConfig.find(
-    (item) => item.nombre === "SAE 90",
-  );
-
-  const componenteSecundario = componentesConfig.find((item) =>
-    item.nombre.toLowerCase().includes("secundario"),
-  );
-
-  const componenteElectrico = componentesConfig.find(
-    (item) =>
-      item.nombre.toLowerCase().includes("eléctrico") ||
-      item.nombre.toLowerCase().includes("electrico"),
-  );
-
   const actualizarEstadoEquipos = async () => {
     try {
       const [activosResponse, inactivosResponse, equiposResponse] =
@@ -515,182 +448,146 @@ function App() {
     }
   };
 
-  const guardarConfiguracionMantenimiento = async () => {
-    if (!configInterno) {
-      setMensajeConfiguracion("Seleccioná un interno.");
-      return;
-    }
+const guardarConfiguracionMantenimiento = async () => {
+  if (!configInterno) {
+    setMensajeConfiguracion("Seleccioná un interno.");
+    return;
+  }
 
-    await actualizarDatosMantenimiento(configInterno);
+  if (!configPlan) {
+    setMensajeConfiguracion("El equipo no tiene un plan de mantenimiento.");
+    return;
+  }
 
-    if (!configPlan) {
-      setMensajeConfiguracion("Seleccioná un plan de mantenimiento.");
-      return;
-    }
+  // Validar componentes opcionales marcados como cambiados
+  for (const item of componentesConfig) {
+    const config = configComponentes[item.componente_id];
 
-    if (
-      filtrosEspeciales.secundario.cambiado &&
-      !filtrosEspeciales.secundario.motivo
-    ) {
+    if (item.opcional && config?.cambiado && !config?.motivo) {
       setMensajeConfiguracion(
-        "Seleccioná el motivo del cambio del filtro secundario.",
+        `Seleccioná el motivo del cambio de ${item.nombre}.`
       );
       return;
     }
+  }
 
-    if (
-      filtrosEspeciales.electrico.cambiado &&
-      !filtrosEspeciales.electrico.motivo
-    ) {
-      setMensajeConfiguracion(
-        "Seleccioná el motivo del cambio del filtro eléctrico.",
-      );
-      return;
-    }
+  try {
+    setMensajeConfiguracion("Guardando configuración...");
 
-    try {
-      setMensajeConfiguracion("Guardando configuración...");
+    // COMPONENTES NO OPCIONALES
+    for (const item of componentesConfig) {
+      const config = configComponentes[item.componente_id];
 
-      // 1. Asignar plan al equipo
-      const responsePlan = await fetch(
-        `http://localhost:3000/equipos/${configInterno}/plan-mantenimiento`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            plan_id: Number(configPlan),
-          }),
-        },
-      );
+      if (!config || item.opcional) {
+        continue;
+      }
 
-      const dataPlan = await responsePlan.json();
+      // Si no se cargó fecha ni horómetro, simplemente no se guarda
+      if (!config.fecha && !config.horometro) {
+        continue;
+      }
 
-      if (!responsePlan.ok) {
+      // Si cargó uno de los dos, exigir ambos
+      if (!config.fecha || !config.horometro) {
         setMensajeConfiguracion(
-          dataPlan.error || "No se pudo asignar el plan.",
+          `Completá fecha y horómetro de ${item.nombre}.`
         );
         return;
       }
 
-      if (
-        configMantenimientos.motor.fecha &&
-        configMantenimientos.motor.horometro
-      ) {
-        const secundarios = [];
-
-        if (componenteSecundario) {
-          secundarios.push({
-            componente_id: componenteSecundario.componente_id,
-            cambiado: filtrosEspeciales.secundario.cambiado,
-            motivo: filtrosEspeciales.secundario.cambiado
-              ? filtrosEspeciales.secundario.motivo
-              : null,
-          });
-        }
-
-        if (componenteElectrico) {
-          secundarios.push({
-            componente_id: componenteElectrico.componente_id,
-            cambiado: filtrosEspeciales.electrico.cambiado,
-            motivo: filtrosEspeciales.electrico.cambiado
-              ? filtrosEspeciales.electrico.motivo
-              : null,
-          });
-        }
-
-        const responseMotor = await fetch(
-          `http://localhost:3000/equipos/${configInterno}/service-completo`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              fecha: configMantenimientos.motor.fecha,
-              horometro: Number(configMantenimientos.motor.horometro),
-              secundarios,
-            }),
+      const response = await fetch(
+        `http://localhost:3000/equipos/${configInterno}/mantenimientos`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
-
-        const dataMotor = await responseMotor.json();
-
-        if (!responseMotor.ok) {
-          setMensajeConfiguracion(
-            dataMotor.error || "Error al guardar el service.",
-          );
-          return;
+          body: JSON.stringify({
+            componente_id: item.componente_id,
+            fecha: config.fecha,
+            horometro: Number(config.horometro),
+            observaciones: "Carga desde configuración",
+          }),
         }
-      }
-
-      // 2. Preparar mantenimientos que tengan fecha + horómetro
-      const registros = [
-        configMantenimientos.hidraulico,
-        configMantenimientos.caja,
-        configMantenimientos.reductor,
-      ].filter((item) => item.componente_id && item.fecha && item.horometro);
-
-      // 3. Guardar históricos
-      for (const registro of registros) {
-        const response = await fetch(
-          `http://localhost:3000/equipos/${configInterno}/mantenimientos`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              componente_id: registro.componente_id,
-              fecha: registro.fecha,
-              horometro: Number(registro.horometro),
-              observaciones: "Carga desde configuración",
-            }),
-          },
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          setMensajeConfiguracion(
-            data.error || "Error al guardar mantenimiento.",
-          );
-          return;
-        }
-      }
-
-      setMensajeConfiguracion(
-        `Configuración del interno ${configInterno} guardada correctamente.`,
       );
 
-      setConfigMantenimientos({
-        motor: {
-          fecha: "",
-          horometro: "",
-        },
-        hidraulico: {
-          componente_id: "",
-          fecha: "",
-          horometro: "",
-        },
-        caja: {
-          componente_id: "",
-          fecha: "",
-          horometro: "",
-        },
-        reductor: {
-          componente_id: "",
-          fecha: "",
-          horometro: "",
-        },
-      });
-    } catch (error) {
-      console.error(error);
+      const data = await response.json();
 
-      setMensajeConfiguracion("Error de conexión con el servidor.");
+      if (!response.ok) {
+        setMensajeConfiguracion(
+          data.error || `Error al guardar ${item.nombre}.`
+        );
+        return;
+      }
     }
-  };
+
+    // COMPONENTES OPCIONALES
+    for (const item of componentesConfig) {
+      const config = configComponentes[item.componente_id];
+
+      if (!item.opcional || !config?.cambiado) {
+        continue;
+      }
+
+      if (!config.fecha || !config.horometro) {
+        setMensajeConfiguracion(
+          `Completá fecha y horómetro de ${item.nombre}.`
+        );
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:3000/equipos/${configInterno}/mantenimientos`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            componente_id: item.componente_id,
+            fecha: config.fecha,
+            horometro: Number(config.horometro),
+            observaciones: config.motivo || "Cambio de componente opcional",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeConfiguracion(
+          data.error || `Error al guardar ${item.nombre}.`
+        );
+        return;
+      }
+    }
+
+    // Actualizar toda la información de mantenimiento
+    await actualizarDatosMantenimiento(configInterno);
+
+    setMensajeConfiguracion(
+      `Configuración del interno ${configInterno} guardada correctamente.`
+    );
+
+    // Limpiar formulario dinámico
+    const configuracionLimpia = {};
+
+    componentesConfig.forEach((item) => {
+      configuracionLimpia[item.componente_id] = {
+        componente_id: item.componente_id,
+        fecha: "",
+        horometro: "",
+        cambiado: false,
+        motivo: "",
+      };
+    });
+
+    setConfigComponentes(configuracionLimpia);
+  } catch (error) {
+    console.error(error);
+    setMensajeConfiguracion("Error de conexión con el servidor.");
+  }
+};
 
   const confirmarBajaEquipo = async () => {
     if (!equipoBaja) return;
@@ -1122,7 +1019,7 @@ function App() {
         )}
 
         {modulo === "inventario" && (
-          <main className="panel">
+          <main className="panel panel-tabla">
             <button className="volver" onClick={() => setModulo("inicio")}>
               ← Volver
             </button>
@@ -1138,7 +1035,7 @@ function App() {
         )}
 
         {modulo === "equipos-activos" && (
-          <main className="panel">
+          <main className="panel panel-tabla">
             <button
               className="volver"
               onClick={() => {
@@ -1427,7 +1324,7 @@ function App() {
         )}
 
         {modulo === "equipos-inactivos" && (
-          <main className="panel">
+          <main className="panel panel-tabla">
             <button className="volver" onClick={() => setModulo("inicio")}>
               ← Volver
             </button>
@@ -1518,7 +1415,7 @@ function App() {
         )}
 
         {modulo === "historial-equipos" && (
-          <main className="panel">
+          <main className="panel panel-tabla">
             <h2>Historial de Máquinas</h2>
 
             <div className="buscador-interno-historial">
@@ -1714,7 +1611,7 @@ function App() {
         )}
 
         {modulo === "nuevo-equipo" && (
-          <main className="panel">
+          <main className="panel panel-tabla">
             <button className="volver" onClick={() => setModulo("inicio")}>
               ← Volver
             </button>
@@ -1933,7 +1830,7 @@ function App() {
         )}
 
         {modulo === "config-mantenimiento" && (
-          <main className="panel">
+          <main className="panel panel-tabla">
             <button className="volver" onClick={() => setModulo("inicio")}>
               ← Volver
             </button>
@@ -1947,7 +1844,78 @@ function App() {
                 Interno
                 <select
                   value={configInterno}
-                  onChange={(e) => setConfigInterno(e.target.value)}
+                  onChange={async (e) => {
+                    const internoSeleccionado = e.target.value;
+
+                    setConfigInterno(internoSeleccionado);
+                    setConfigPlan("");
+                    setConfigPlanNombre("");
+                    setComponentesConfig([]);
+                    setConfigComponentes({});
+
+                    if (!internoSeleccionado) return;
+
+                    try {
+                      const response = await fetch(
+                        `http://localhost:3000/equipos/${internoSeleccionado}/plan-mantenimiento`,
+                      );
+
+                      const data = await response.json();
+
+                      if (!response.ok) {
+                        console.error("Error al cargar plan:", data);
+                        return;
+                      }
+
+                      if (data.length > 0) {
+                        const planId = String(data[0].plan_id);
+
+                        setConfigPlan(planId);
+                        setConfigPlanNombre(data[0].plan);
+
+                        const responseComponentes = await fetch(
+                          `http://localhost:3000/planes-mantenimiento/${planId}/componentes`,
+                        );
+
+                        const componentes = await responseComponentes.json();
+
+                        if (!responseComponentes.ok) {
+                          console.error(
+                            "Error al cargar componentes:",
+                            componentes,
+                          );
+                          setComponentesConfig([]);
+                          return;
+                        }
+
+                        setComponentesConfig(componentes);
+
+                        const nuevaConfiguracion = {};
+
+                        componentes.forEach((item) => {
+                          nuevaConfiguracion[item.componente_id] = {
+                            componente_id: item.componente_id,
+                            fecha: "",
+                            horometro: "",
+                            cambiado: false,
+                            motivo: "",
+                          };
+                        });
+
+                        setConfigComponentes(nuevaConfiguracion);
+                      } else {
+                        setConfigPlan("");
+                        setConfigPlanNombre("");
+                        setComponentesConfig([]);
+                        setConfigComponentes({});
+                      }
+                    } catch (error) {
+                      console.error(
+                        "Error al consultar plan del equipo:",
+                        error,
+                      );
+                    }
+                  }}
                 >
                   <option value="">Seleccionar equipo...</option>
 
@@ -1961,311 +1929,160 @@ function App() {
 
               <label>
                 Plan de mantenimiento
-                <select
-                  value={configPlan}
-                  onChange={(e) => setConfigPlan(e.target.value)}
-                >
-                  <option value="">Seleccionar plan...</option>
-
-                  {planesMantenimiento.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="mantenimiento-card">
-              <h4>Service de motor</h4>
-
-              <p>Frecuencia: 300 hs</p>
-
-              <label>
-                Última fecha
                 <input
-                  type="date"
-                  value={configMantenimientos.motor.fecha}
-                  onChange={(e) =>
-                    setConfigMantenimientos({
-                      ...configMantenimientos,
-                      motor: {
-                        ...configMantenimientos.motor,
-                        fecha: e.target.value,
-                      },
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                Último horómetro
-                <input
-                  type="number"
-                  value={configMantenimientos.motor.horometro}
-                  onChange={(e) =>
-                    setConfigMantenimientos({
-                      ...configMantenimientos,
-                      motor: {
-                        ...configMantenimientos.motor,
-                        horometro: e.target.value,
-                      },
-                    })
-                  }
+                  type="text"
+                  value={configPlanNombre || "Sin plan asignado"}
+                  readOnly
                 />
               </label>
             </div>
-            <div className="mantenimiento-card">
-              <h4>Filtros especiales</h4>
 
-              {componenteSecundario && (
-                <div>
-                  <strong>Filtro aire secundario</strong>
+            {configPlan && componentesConfig.length > 0 && (
+              <>
+                <h3>{configPlanNombre}</h3>
 
-                  <p>Frecuencia: {componenteSecundario.frecuencia_horas} hs</p>
+                <div className="mantenimientos-grid">
+                  {componentesConfig.map((item) => {
+                    const config = configComponentes[item.componente_id] || {
+                      fecha: "",
+                      horometro: "",
+                      cambiado: false,
+                      motivo: "",
+                    };
 
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={filtrosEspeciales.secundario.cambiado}
-                      onChange={(e) =>
-                        setFiltrosEspeciales({
-                          ...filtrosEspeciales,
-                          secundario: {
-                            ...filtrosEspeciales.secundario,
-                            componente_id: componenteSecundario.componente_id,
-                            cambiado: e.target.checked,
-                            motivo: e.target.checked
-                              ? filtrosEspeciales.secundario.motivo
-                              : "",
-                          },
-                        })
-                      }
-                    />
-                    Cambiar filtro
-                  </label>
+                    return (
+                      <div
+                        className="mantenimiento-card"
+                        key={item.componente_id}
+                      >
+                        <h4>{item.nombre}</h4>
 
-                  {filtrosEspeciales.secundario.cambiado && (
-                    <select
-                      value={filtrosEspeciales.secundario.motivo}
-                      onChange={(e) =>
-                        setFiltrosEspeciales({
-                          ...filtrosEspeciales,
-                          secundario: {
-                            ...filtrosEspeciales.secundario,
-                            motivo: e.target.value,
-                          },
-                        })
-                      }
-                    >
-                      <option value="">Seleccionar motivo...</option>
-                      <option value="Por frecuencia">Por frecuencia</option>
-                      <option value="Sucio">Sucio</option>
-                      <option value="Dañado">Dañado</option>
-                      <option value="Decisión jefe de mecánicos">
-                        Decisión jefe de mecánicos
-                      </option>
-                      <option value="Otro">Otro</option>
-                    </select>
-                  )}
+                        {item.codigo && (
+                          <p>
+                            <strong>Código:</strong> {item.codigo}
+                          </p>
+                        )}
+
+                        <p>
+                          <strong>Frecuencia:</strong> {item.frecuencia_horas}{" "}
+                          hs
+                        </p>
+
+                        {item.cantidad && (
+                          <p>
+                            <strong>Cantidad:</strong> {item.cantidad}{" "}
+                            {item.unidad || ""}
+                          </p>
+                        )}
+
+                        {item.opcional ? (
+                          <>
+                            <p>
+                              <strong>Opcional</strong>
+                            </p>
+
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={config.cambiado}
+                                onChange={(e) =>
+                                  setConfigComponentes((anterior) => ({
+                                    ...anterior,
+
+                                    [item.componente_id]: {
+                                      ...anterior[item.componente_id],
+                                      componente_id: item.componente_id,
+                                      cambiado: e.target.checked,
+                                      motivo: e.target.checked
+                                        ? anterior[item.componente_id]
+                                            ?.motivo || ""
+                                        : "",
+                                    },
+                                  }))
+                                }
+                              />
+                              Registrar cambio
+                            </label>
+
+                            {config.cambiado && (
+                              <select
+                                value={config.motivo}
+                                onChange={(e) =>
+                                  setConfigComponentes((anterior) => ({
+                                    ...anterior,
+
+                                    [item.componente_id]: {
+                                      ...anterior[item.componente_id],
+                                      motivo: e.target.value,
+                                    },
+                                  }))
+                                }
+                              >
+                                <option value="">Seleccionar motivo...</option>
+
+                                <option value="Por frecuencia">
+                                  Por frecuencia
+                                </option>
+
+                                <option value="Sucio">Sucio</option>
+
+                                <option value="Dañado">Dañado</option>
+
+                                <option value="Decisión jefe de mecánicos">
+                                  Decisión jefe de mecánicos
+                                </option>
+
+                                <option value="Otro">Otro</option>
+                              </select>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <label>
+                              Última fecha
+                              <input
+                                type="date"
+                                value={config.fecha}
+                                onChange={(e) =>
+                                  setConfigComponentes((anterior) => ({
+                                    ...anterior,
+
+                                    [item.componente_id]: {
+                                      ...anterior[item.componente_id],
+                                      componente_id: item.componente_id,
+                                      fecha: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </label>
+
+                            <label>
+                              Último horómetro
+                              <input
+                                type="number"
+                                value={config.horometro}
+                                onChange={(e) =>
+                                  setConfigComponentes((anterior) => ({
+                                    ...anterior,
+
+                                    [item.componente_id]: {
+                                      ...anterior[item.componente_id],
+                                      componente_id: item.componente_id,
+                                      horometro: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </label>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-
-              {componenteElectrico && (
-                <div>
-                  <strong>Filtro combustible eléctrico</strong>
-
-                  <p>Frecuencia: {componenteElectrico.frecuencia_horas} hs</p>
-
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={filtrosEspeciales.electrico.cambiado}
-                      onChange={(e) =>
-                        setFiltrosEspeciales({
-                          ...filtrosEspeciales,
-                          electrico: {
-                            ...filtrosEspeciales.electrico,
-                            componente_id: componenteElectrico.componente_id,
-                            cambiado: e.target.checked,
-                            motivo: e.target.checked
-                              ? filtrosEspeciales.electrico.motivo
-                              : "",
-                          },
-                        })
-                      }
-                    />
-                    Cambiar filtro
-                  </label>
-
-                  {filtrosEspeciales.electrico.cambiado && (
-                    <select
-                      value={filtrosEspeciales.electrico.motivo}
-                      onChange={(e) =>
-                        setFiltrosEspeciales({
-                          ...filtrosEspeciales,
-                          electrico: {
-                            ...filtrosEspeciales.electrico,
-                            motivo: e.target.value,
-                          },
-                        })
-                      }
-                    >
-                      <option value="">Seleccionar motivo...</option>
-                      <option value="Por frecuencia">Por frecuencia</option>
-                      <option value="Sucio">Sucio</option>
-                      <option value="Dañado">Dañado</option>
-                      <option value="Decisión por el mecánico">
-                        Decisión por el mecánico
-                      </option>
-                      <option value="Otro">Otro</option>
-                    </select>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {configPlan && (
-              <div className="mantenimientos-grid">
-                {/* HIDRÁULICO */}
-                {componenteHidraulico && (
-                  <div className="mantenimiento-card">
-                    <h4>Hidráulico</h4>
-
-                    <p>
-                      Frecuencia: {componenteHidraulico.frecuencia_horas} hs
-                    </p>
-
-                    <label>
-                      Última fecha
-                      <input
-                        type="date"
-                        value={configMantenimientos.hidraulico.fecha}
-                        onChange={(e) =>
-                          setConfigMantenimientos({
-                            ...configMantenimientos,
-                            hidraulico: {
-                              ...configMantenimientos.hidraulico,
-                              componente_id: componenteHidraulico.componente_id,
-                              fecha: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-
-                    <label>
-                      Último horómetro
-                      <input
-                        type="number"
-                        value={configMantenimientos.hidraulico.horometro}
-                        onChange={(e) =>
-                          setConfigMantenimientos({
-                            ...configMantenimientos,
-                            hidraulico: {
-                              ...configMantenimientos.hidraulico,
-                              componente_id: componenteHidraulico.componente_id,
-                              horometro: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                )}
-
-                {/* CAJA */}
-                {componenteCaja && (
-                  <div className="mantenimiento-card">
-                    <h4>Caja</h4>
-
-                    <p>Frecuencia: {componenteCaja.frecuencia_horas} hs</p>
-
-                    <label>
-                      Última fecha
-                      <input
-                        type="date"
-                        value={configMantenimientos.caja.fecha}
-                        onChange={(e) =>
-                          setConfigMantenimientos({
-                            ...configMantenimientos,
-                            caja: {
-                              ...configMantenimientos.caja,
-                              componente_id: componenteCaja.componente_id,
-                              fecha: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-
-                    <label>
-                      Último horómetro
-                      <input
-                        type="number"
-                        value={configMantenimientos.caja.horometro}
-                        onChange={(e) =>
-                          setConfigMantenimientos({
-                            ...configMantenimientos,
-                            caja: {
-                              ...configMantenimientos.caja,
-                              componente_id: componenteCaja.componente_id,
-                              horometro: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                )}
-
-                {/* REDUCTOR */}
-                {componenteReductor && (
-                  <div className="mantenimiento-card">
-                    <h4>Reductor y Diferencial</h4>
-
-                    <p>Frecuencia: {componenteReductor.frecuencia_horas} hs</p>
-
-                    <label>
-                      Última fecha
-                      <input
-                        type="date"
-                        value={configMantenimientos.reductor.fecha}
-                        onChange={(e) =>
-                          setConfigMantenimientos({
-                            ...configMantenimientos,
-                            reductor: {
-                              ...configMantenimientos.reductor,
-                              componente_id: componenteReductor.componente_id,
-                              fecha: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-
-                    <label>
-                      Último horómetro
-                      <input
-                        type="number"
-                        value={configMantenimientos.reductor.horometro}
-                        onChange={(e) =>
-                          setConfigMantenimientos({
-                            ...configMantenimientos,
-                            reductor: {
-                              ...configMantenimientos.reductor,
-                              componente_id: componenteReductor.componente_id,
-                              horometro: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
+              </>
             )}
-
             <button
               type="button"
               onClick={guardarConfiguracionMantenimiento}
@@ -2281,7 +2098,7 @@ function App() {
         )}
 
         {modulo === "equipos" && (
-          <main className="panel">
+          <main className="panel panel-tabla">
             <button className="volver" onClick={() => setModulo("inicio")}>
               ← Volver
             </button>
@@ -2398,91 +2215,95 @@ function App() {
 
                 <hr />
 
-                <h3>Filtros 600 hs</h3>
+                {filtrosEspecialesEstado.length > 0 && (
+                  <>
+                    <h3>Filtros especiales</h3>
 
-                {filtrosEspecialesEstado.length > 0 ? (
-                  <div className="filtros-600-grid">
-                    {filtrosEspecialesEstado.map((item) => (
-                      <div
-                        className="mantenimiento-card"
-                        key={item.componente_id}
-                      >
-                        <h4>
-                          {item.componente === "Filtro aire secundario"
-                            ? "Filtro secundario"
-                            : "Filtro combustible eléctrico"}
-                        </h4>
+                    <div className="filtros-600-grid">
+                      {filtrosEspecialesEstado.map((item) => (
+                        <div
+                          className="mantenimiento-card"
+                          key={item.componente_id}
+                        >
+                          <h4>{item.componente}</h4>
 
-                        {item.horometro_ultimo_cambio !== null ? (
-                          <>
+                          {item.codigo && (
                             <p>
-                              <strong>Último cambio:</strong>{" "}
-                              {item.horometro_ultimo_cambio} hs
+                              <strong>Código:</strong> {item.codigo}
                             </p>
+                          )}
 
-                            <p>
-                              <strong>Fecha:</strong>{" "}
-                              {new Date(
-                                item.fecha_ultimo_cambio,
-                              ).toLocaleDateString("es-AR")}
-                            </p>
+                          <p>
+                            <strong>Frecuencia:</strong> {item.frecuencia_horas}{" "}
+                            hs
+                          </p>
 
-                            {item.observaciones && (
+                          {item.horometro_ultimo_cambio !== null ? (
+                            <>
                               <p>
-                                <strong>Motivo por cambio:</strong>{" "}
-                                {item.observaciones.replace(
-                                  "Cambio durante service: ",
-                                  "",
-                                )}
+                                <strong>Último cambio:</strong>{" "}
+                                {item.horometro_ultimo_cambio} hs
                               </p>
-                            )}
 
-                            <p>
-                              <strong>Frecuencia:</strong>{" "}
-                              {item.frecuencia_horas} hs
-                            </p>
+                              <p>
+                                <strong>Fecha:</strong>{" "}
+                                {new Date(
+                                  item.fecha_ultimo_cambio,
+                                ).toLocaleDateString("es-AR")}
+                              </p>
 
-                            <p>
-                              <strong>Horas usadas:</strong> {item.horas_usadas}{" "}
-                              hs
-                            </p>
+                              {item.observaciones && (
+                                <p>
+                                  <strong>Motivo por cambio:</strong>{" "}
+                                  {item.observaciones.replace(
+                                    "Cambio durante service: ",
+                                    "",
+                                  )}
+                                </p>
+                              )}
 
-                            <p>
-                              <strong>Próximo cambio:</strong>{" "}
-                              {item.proximo_cambio} hs
-                            </p>
+                              <p>
+                                <strong>Horas usadas:</strong>{" "}
+                                {item.horas_usadas} hs
+                              </p>
 
-                            <p>
-                              <strong>
-                                {item.horas_restantes < 0
-                                  ? "Vencido por:"
-                                  : "Restante:"}
-                              </strong>{" "}
-                              {Math.abs(item.horas_restantes)} hs
-                            </p>
+                              <p>
+                                <strong>Próximo cambio:</strong>{" "}
+                                {item.proximo_cambio} hs
+                              </p>
 
-                            <div
-                              className={`estado mantenimiento-${item.estado
-                                .toLowerCase()
-                                .replaceAll(" ", "-")}`}
-                            >
-                              {item.estado === "OK" && "✓ "}
-                              {item.estado === "Próximo" && "⚠ "}
-                              {item.estado === "Vencido" && "✕ "}
-                              {item.estado}
-                            </div>
-                          </>
-                        ) : (
-                          <p>Sin historial registrado.</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p>No hay filtros especiales registrados.</p>
+                              <p>
+                                <strong>
+                                  {item.horas_restantes < 0
+                                    ? "Vencido por:"
+                                    : "Restante:"}
+                                </strong>{" "}
+                                {Math.abs(item.horas_restantes)} hs
+                              </p>
+
+                              <div
+                                className={`estado mantenimiento-${item.estado
+                                  .toLowerCase()
+                                  .replaceAll(" ", "-")}`}
+                              >
+                                {item.estado === "OK" && "✓ "}
+                                {item.estado === "Próximo" && "⚠ "}
+                                {item.estado === "Vencido" && "✕ "}
+                                {item.estado}
+                              </div>
+                            </>
+                          ) : (
+                            <p>Sin historial registrado.</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
 
-                <h3>Mantenimientos anuales</h3>
+                {mantenimientos.length > 0 && (
+                  <h3>Mantenimientos programados</h3>
+                )}
 
                 {mantenimientos.length > 0 ? (
                   <div className="mantenimientos-grid">
@@ -2491,15 +2312,13 @@ function App() {
                         className="mantenimiento-card"
                         key={item.componente_id}
                       >
-                        <h4>
-                          {item.componente === "Filtro hidráulico"
-                            ? "Hidráulico"
-                            : item.componente === "Filtro de caja"
-                              ? "Caja"
-                              : item.componente === "SAE 90"
-                                ? "Reductor y Diferencial"
-                                : item.componente}
-                        </h4>
+                        <h4>{item.componente}</h4>
+
+                        {item.codigo && (
+                          <p>
+                            <strong>Código:</strong> {item.codigo}
+                          </p>
+                        )}
 
                         {item.horometro_ultimo_mantenimiento !== null ? (
                           <>
@@ -2575,7 +2394,15 @@ function App() {
 
                           <span>{item.codigo || "---"}</span>
 
+                          {item.cantidad && (
+                            <small>
+                              Cantidad: {item.cantidad} {item.unidad || ""}
+                            </small>
+                          )}
+
                           <small>Cada {item.frecuencia_horas} hs</small>
+
+                          {item.opcional && <small>Opcional</small>}
                         </div>
                       ))}
                     </div>

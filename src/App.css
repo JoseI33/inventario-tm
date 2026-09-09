@@ -148,26 +148,34 @@ header p {
 
 .tabla-contenedor {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
-  margin-top: 25px;
 }
 
 .tabla-equipos {
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
+  table-layout: auto;
+}
+
+.panel-tabla {
+  max-width: 100%;
+  width: 100%;
 }
 
 .tabla-equipos th,
 .tabla-equipos td {
-  padding: 12px;
+  padding: 10px 8px;
   border-bottom: 1px solid #ddd;
-  text-align: left;
+  text-align: center;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .tabla-equipos th {
   background: #20252b;
   color: white;
+  white-space: nowrap;
 }
 
 .tabla-equipos tbody tr:hover {
@@ -672,8 +680,10 @@ header p {
 
 .app-content {
   margin-left: 250px;
-  min-height: 100vh;
-  padding: 0;
+  padding: 25px 20px;
+  width: calc(100% - 250px);
+  max-width: none;
+  box-sizing: border-box;
 }
 
 /* El dashboard ya vive dentro de app-content */
@@ -685,9 +695,8 @@ header p {
 
 /* Las demás pantallas también respetan el sidebar */
 .app-content .panel {
-  margin-left: 0;
-  min-height: 100vh;
-  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
 }
 
 
@@ -785,4 +794,11 @@ header p {
 .buscador-interno-historial input:focus {
   outline: none;
   border-color: #666;
+}
+
+/* Pantallas con tablas */
+.app-content .panel.panel-tabla {
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }

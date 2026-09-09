@@ -493,21 +493,35 @@ app.get("/equipos/:interno/plan-mantenimiento", async (req, res) => {
       `
       SELECT
         e.interno,
+
         p.id AS plan_id,
         p.nombre AS plan,
+
         c.id AS componente_id,
         c.nombre AS componente,
         c.codigo,
-        pc.frecuencia_horas
+
+        pc.frecuencia_horas,
+        pc.cantidad,
+        pc.unidad,
+        pc.opcional
+
       FROM equipos e
+
       JOIN planes_mantenimiento p
         ON p.id = e.plan_mantenimiento_id
+
       JOIN plan_componentes pc
         ON pc.plan_id = p.id
+
       JOIN componentes_mantenimiento c
         ON c.id = pc.componente_id
+
       WHERE e.interno = $1
-      ORDER BY pc.frecuencia_horas, c.nombre
+
+      ORDER BY
+        pc.frecuencia_horas,
+        c.nombre
       `,
       [interno]
     );
@@ -531,10 +545,19 @@ app.get("/equipos/:interno/mantenimientos", async (req, res) => {
       SELECT
         e.interno,
         e.horometro_actual,
+
+        p.id AS plan_id,
+        p.nombre AS plan,
+
         c.id AS componente_id,
         c.nombre AS componente,
         c.codigo,
+
         pc.frecuencia_horas,
+        pc.cantidad,
+        pc.unidad,
+        pc.opcional,
+
         m.fecha AS fecha_ultimo_mantenimiento,
         m.horometro AS horometro_ultimo_mantenimiento,
 
@@ -566,22 +589,27 @@ app.get("/equipos/:interno/mantenimientos", async (req, res) => {
         SELECT
           m2.fecha,
           m2.horometro
+
         FROM mantenimientos m2
+
         WHERE m2.equipo_id = e.id
-        AND m2.componente_id = c.id
-        ORDER BY m2.fecha DESC, m2.id DESC
+          AND m2.componente_id = c.id
+
+        ORDER BY
+          m2.fecha DESC,
+          m2.id DESC
+
         LIMIT 1
       ) m ON true
 
       WHERE e.interno = $1
 
-      AND (
-        c.nombre = 'Filtro hidráulico'
-        OR c.nombre = 'Filtro de caja'
-        OR c.nombre = 'SAE 90'
-      )
+        AND pc.opcional = FALSE
+        AND pc.frecuencia_horas > 300
 
-      ORDER BY pc.frecuencia_horas, c.nombre
+      ORDER BY
+        pc.frecuencia_horas,
+        c.nombre
       `,
       [interno]
     );
@@ -804,11 +832,17 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
         e.interno,
         e.horometro_actual,
 
+        p.id AS plan_id,
+        p.nombre AS plan,
+
         c.id AS componente_id,
         c.nombre AS componente,
         c.codigo,
 
         pc.frecuencia_horas,
+        pc.cantidad,
+        pc.unidad,
+        pc.opcional,
 
         m.fecha AS fecha_ultimo_cambio,
         m.horometro AS horometro_ultimo_cambio,
@@ -843,20 +877,26 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
           m2.fecha,
           m2.horometro,
           m2.observaciones
+
         FROM mantenimientos m2
+
         WHERE m2.equipo_id = e.id
           AND m2.componente_id = c.id
-        ORDER BY m2.fecha DESC, m2.id DESC
+
+        ORDER BY
+          m2.fecha DESC,
+          m2.id DESC
+
         LIMIT 1
       ) m ON true
 
       WHERE e.interno = $1
-        AND (
-          c.nombre = 'Filtro aire secundario'
-          OR c.nombre = 'Filtro combustible eléctrico'
-        )
 
-      ORDER BY c.nombre
+        AND pc.opcional = TRUE
+
+      ORDER BY
+        pc.frecuencia_horas,
+        c.nombre
       `,
       [interno]
     );
