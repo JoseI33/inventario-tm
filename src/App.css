@@ -802,3 +802,23 @@ header p {
   max-width: none;
   margin: 0;
 }
+
+.btn-plan {
+  width: 30%;
+  align-self: center;
+  display: inline-block;
+  padding: 8px 16px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.btn-plan:hover {
+  background-color: #2563eb;
+  color: white;
+  transform: translateY(-1px);
+}

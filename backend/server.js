@@ -671,7 +671,10 @@ app.get("/planes-mantenimiento/:id/componentes", async (req, res) => {
         c.id AS componente_id,
         c.nombre,
         c.codigo,
-        pc.frecuencia_horas
+        pc.frecuencia_horas,
+        pc.cantidad,
+        pc.unidad,
+        pc.opcional
       FROM plan_componentes pc
       JOIN componentes_mantenimiento c
         ON c.id = pc.componente_id
