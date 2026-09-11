@@ -517,6 +517,28 @@ function App() {
         const configMotor =
           configComponentes[componenteMotorConDatos.componente_id];
 
+        const secundarios = componentesConfig
+          .filter((item) => {
+            const esOpcional =
+              item.opcional === true ||
+              item.opcional === "true" ||
+              item.opcional === 1;
+
+            const config = configComponentes[item.componente_id];
+
+            return esOpcional && config?.cambiado;
+          })
+          .map((item) => {
+            const config = configComponentes[item.componente_id];
+
+            return {
+              componente_id: item.componente_id,
+              cambiado: true,
+              motivo: config.motivo || null,
+              observaciones: null,
+            };
+          });
+
         const responseMotor = await fetch(
           `http://localhost:3000/equipos/${configInterno}/service-completo`,
           {
@@ -527,7 +549,7 @@ function App() {
             body: JSON.stringify({
               fecha: configMotor.fecha,
               horometro: Number(configMotor.horometro),
-              secundarios: [],
+              secundarios,
             }),
           },
         );
@@ -546,7 +568,12 @@ function App() {
       for (const item of componentesConfig) {
         const config = configComponentes[item.componente_id];
 
-        if (!config || item.opcional || Number(item.frecuencia_horas) === 300) {
+        const esOpcional =
+          item.opcional === true ||
+          item.opcional === "true" ||
+          item.opcional === 1;
+
+        if (!config || esOpcional || Number(item.frecuencia_horas) === 300) {
           continue;
         }
 
@@ -556,9 +583,13 @@ function App() {
         }
 
         // Si cargó uno de los dos, exigir ambos
-        if (!config.fecha || !config.horometro) {
+        const fechaCambio = config.fecha || configServiceMotor.fecha;
+        const horometroCambio =
+          config.horometro || configServiceMotor.horometro;
+
+        if (!fechaCambio || !horometroCambio) {
           setMensajeConfiguracion(
-            `Completá fecha y horómetro de ${item.nombre}.`,
+            `Completá fecha y horómetro del service para registrar ${item.nombre}.`,
           );
           return;
         }
@@ -572,49 +603,8 @@ function App() {
             },
             body: JSON.stringify({
               componente_id: item.componente_id,
-              fecha: config.fecha,
-              horometro: Number(config.horometro),
-              observaciones: "Carga desde configuración",
-            }),
-          },
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          setMensajeConfiguracion(
-            data.error || `Error al guardar ${item.nombre}.`,
-          );
-          return;
-        }
-      }
-
-      // COMPONENTES OPCIONALES
-      for (const item of componentesConfig) {
-        const config = configComponentes[item.componente_id];
-
-        if (!item.opcional || !config?.cambiado) {
-          continue;
-        }
-
-        if (!config.fecha || !config.horometro) {
-          setMensajeConfiguracion(
-            `Completá fecha y horómetro de ${item.nombre}.`,
-          );
-          return;
-        }
-
-        const response = await fetch(
-          `http://localhost:3000/equipos/${configInterno}/mantenimientos`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              componente_id: item.componente_id,
-              fecha: config.fecha,
-              horometro: Number(config.horometro),
+              fecha: fechaCambio,
+              horometro: Number(horometroCambio),
               observaciones: config.motivo || "Cambio de componente opcional",
             }),
           },
@@ -629,6 +619,8 @@ function App() {
           return;
         }
       }
+
+     
 
       // Actualizar toda la información de mantenimiento
       await actualizarDatosMantenimiento(configInterno);
@@ -2086,7 +2078,7 @@ function App() {
                 planSeleccionado &&
                 (!configPlan || editandoPlan) && (
                   <button
-                  className="btn-plan"
+                    className="btn-plan"
                     type="button"
                     onClick={async () => {
                       if (configPlan && editandoPlan) {
