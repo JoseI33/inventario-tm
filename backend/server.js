@@ -305,6 +305,9 @@ app.get("/equipos-activos", async (req, res) => {
 
         h.fecha AS ultima_visita,
         h.horometro AS horometro_ultima_visita,
+        h.fecha_anterior,
+        h.horometro_anterior,
+
         (h.horometro - c.horometro_inicio) AS diferencia_horas,
 
         s.fecha AS fecha_ultimo_service_motor,
@@ -318,7 +321,88 @@ app.get("/equipos-activos", async (req, res) => {
         CASE
           WHEN s.horometro IS NULL OR h.horometro IS NULL THEN NULL
           ELSE (s.horometro + 300) - h.horometro
-        END AS horas_restantes_service_motor
+        END AS horas_restantes_service_motor,
+
+        CASE
+          WHEN h.fecha IS NULL THEN NULL
+          ELSE CURRENT_DATE - h.fecha::date
+        END AS dias_sin_control,
+
+        CASE
+          WHEN
+            h.horometro_anterior IS NULL
+            OR h.fecha_anterior IS NULL
+            OR h.fecha IS NULL
+            OR h.fecha::date = h.fecha_anterior::date
+          THEN NULL
+          ELSE
+            ROUND(
+              (h.horometro - h.horometro_anterior)::numeric
+              /
+              NULLIF(
+                h.fecha::date - h.fecha_anterior::date,
+                0
+              ),
+              2
+            )
+        END AS promedio_horas_dia,
+
+        CASE
+          WHEN
+            h.horometro IS NULL
+            OR h.horometro_anterior IS NULL
+            OR h.fecha IS NULL
+            OR h.fecha_anterior IS NULL
+            OR h.fecha::date = h.fecha_anterior::date
+          THEN NULL
+          ELSE
+            ROUND(
+              h.horometro::numeric
+              +
+              (
+                (h.horometro - h.horometro_anterior)::numeric
+                /
+                NULLIF(
+                  h.fecha::date - h.fecha_anterior::date,
+                  0
+                )
+              )
+              *
+              (CURRENT_DATE - h.fecha::date),
+              0
+            )
+        END AS horometro_estimado,
+
+        CASE
+          WHEN
+            s.horometro IS NULL
+            OR h.horometro IS NULL
+            OR h.horometro_anterior IS NULL
+            OR h.fecha IS NULL
+            OR h.fecha_anterior IS NULL
+            OR h.fecha::date = h.fecha_anterior::date
+          THEN NULL
+          ELSE
+            ROUND(
+              (s.horometro + 300)::numeric
+              -
+              (
+                h.horometro::numeric
+                +
+                (
+                  (h.horometro - h.horometro_anterior)::numeric
+                  /
+                  NULLIF(
+                    h.fecha::date - h.fecha_anterior::date,
+                    0
+                  )
+                )
+                *
+                (CURRENT_DATE - h.fecha::date)
+              ),
+              0
+            )
+        END AS horas_restantes_estimadas
 
       FROM contratos_equipos c
 
@@ -327,12 +411,22 @@ app.get("/equipos-activos", async (req, res) => {
 
       LEFT JOIN LATERAL (
         SELECT
-          h2.fecha,
-          h2.horometro
-        FROM horometros h2
-        WHERE h2.equipo_id = e.id
-        ORDER BY h2.fecha DESC, h2.id DESC
-        LIMIT 1
+          MAX(CASE WHEN orden = 1 THEN fecha END) AS fecha,
+          MAX(CASE WHEN orden = 1 THEN horometro END) AS horometro,
+          MAX(CASE WHEN orden = 2 THEN fecha END) AS fecha_anterior,
+          MAX(CASE WHEN orden = 2 THEN horometro END) AS horometro_anterior
+        FROM (
+          SELECT
+            h2.fecha,
+            h2.horometro,
+            ROW_NUMBER() OVER (
+              ORDER BY h2.fecha DESC, h2.id DESC
+            ) AS orden
+          FROM horometros h2
+          WHERE h2.equipo_id = e.id
+          ORDER BY h2.fecha DESC, h2.id DESC
+          LIMIT 2
+        ) ultimos
       ) h ON true
 
       LEFT JOIN LATERAL (
@@ -1227,6 +1321,35 @@ app.get("/historial-equipos", async (req, res) => {
 
     res.status(500).json({
       error: "Error al consultar historial general de equipos",
+    });
+  }
+});
+
+
+app.get("/equipos/:interno/ultimos-horometros", async (req, res) => {
+  const { interno } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        h.fecha,
+        h.horometro
+      FROM horometros h
+      JOIN equipos e ON e.id = h.equipo_id
+      WHERE e.interno = $1
+      ORDER BY h.fecha DESC, h.id DESC
+      LIMIT 2
+      `,
+      [interno]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error al consultar últimos horómetros",
     });
   }
 });

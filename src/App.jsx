@@ -44,6 +44,7 @@ function App() {
 
   // EQUIPOS INACTIVOS
   const [equiposInactivos, setEquiposInactivos] = useState([]);
+
   // FORMULARIO DE BAJA
   const formularioBajaRef = useRef(null);
 
@@ -67,6 +68,9 @@ function App() {
   // CONTRATOS
   const [internoContrato, setInternoContrato] = useState("");
   const [mensajeContrato, setMensajeContrato] = useState("");
+
+  // PROYECCION DE SERVICE
+  const [proyeccionService, setProyeccionService] = useState(null);
 
   const [nuevoContrato, setNuevoContrato] = useState({
     empresa: "",
@@ -111,6 +115,82 @@ function App() {
 
     cargarPlanesMantenimiento();
   }, []);
+
+  const calcularProyeccionService = async (interno, ultimoServiceMotor) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3000/equipos/${interno}/ultimos-horometros`,
+      );
+
+      const lecturas = await response.json();
+
+      if (!response.ok || lecturas.length < 2) {
+        setProyeccionService(null);
+        return;
+      }
+
+      const ultimaLectura = lecturas[0];
+      const lecturaAnterior = lecturas[1];
+
+      const fechaUltima = new Date(ultimaLectura.fecha);
+      const fechaAnterior = new Date(lecturaAnterior.fecha);
+      const hoy = new Date();
+
+      const MS_DIA = 1000 * 60 * 60 * 24;
+
+      // Días entre las últimas dos visitas
+      const diasEntreLecturas = Math.max(
+        1,
+        Math.round((fechaUltima - fechaAnterior) / MS_DIA),
+      );
+
+      // Horas trabajadas entre ambas visitas
+      const diferenciaHorometro =
+        Number(ultimaLectura.horometro) - Number(lecturaAnterior.horometro);
+
+      // Promedio de uso diario
+      const horasPromedioDia = diferenciaHorometro / diasEntreLecturas;
+
+      // Días desde la última visita
+      const diasDesdeUltimaVisita = Math.max(
+        0,
+        Math.floor((hoy - fechaUltima) / MS_DIA),
+      );
+
+      // Horómetro estimado al día de hoy
+      const horometroEstimado =
+        Number(ultimaLectura.horometro) +
+        horasPromedioDia * diasDesdeUltimaVisita;
+
+      // Próximo service
+      const proximoService = Number(ultimoServiceMotor.horometro) + 300;
+
+      // Horas estimadas restantes
+      const horasRestantes = proximoService - horometroEstimado;
+
+      // Días aproximados hasta el service
+      const diasRestantes =
+        horasPromedioDia > 0 ? horasRestantes / horasPromedioDia : null;
+
+      const resultado = {
+        interno,
+        ultimaFecha: ultimaLectura.fecha,
+        ultimoHorometro: Number(ultimaLectura.horometro),
+        horasPromedioDia,
+        diasDesdeUltimaVisita,
+        horometroEstimado,
+        proximoService,
+        horasRestantes,
+        diasRestantes,
+        requiereControl: diasDesdeUltimaVisita >= 20,
+      };
+
+      setProyeccionService(resultado);
+    } catch (error) {
+      console.error("Error calculando proyección:", error);
+      setProyeccionService(null);
+    }
+  };
 
   useEffect(() => {
     fetch("http://localhost:3000/equipos-inactivos")
@@ -219,6 +299,16 @@ function App() {
         setMantenimientos([]);
       });
   }, [interno]);
+
+  useEffect(() => {
+    if (!interno || !ultimoService) return;
+
+    const cargarProyeccion = async () => {
+      await calcularProyeccionService(interno, ultimoService);
+    };
+
+    cargarProyeccion();
+  }, [interno, ultimoService]);
 
   useEffect(() => {
     if (!configPlan) return;
@@ -620,8 +710,6 @@ function App() {
         }
       }
 
-     
-
       // Actualizar toda la información de mantenimiento
       await actualizarDatosMantenimiento(configInterno);
 
@@ -722,10 +810,36 @@ function App() {
   };
 
   const equiposConAlertaService = equiposActivos.filter((equipo) => {
-    const horas = Number(equipo.horas_restantes_service_motor);
+    const horasEstimadas = Number(equipo.horas_restantes_estimadas);
 
-    return equipo.horas_restantes_service_motor !== null && horas <= 50;
+    const diasSinControl = Number(equipo.dias_sin_control);
+
+    const alertaService =
+      equipo.horas_restantes_estimadas !== null && horasEstimadas <= 50;
+
+    const alertaControl =
+      equipo.dias_sin_control !== null && diasSinControl >= 20;
+
+    return alertaService || alertaControl;
   });
+
+  const cantidadAlertasMantenimiento = equiposConAlertaService.length;
+
+  const cantidadServicesVencidos = equiposActivos.filter((equipo) => {
+    if (equipo.horas_restantes_estimadas === null) {
+      return false;
+    }
+
+    return Number(equipo.horas_restantes_estimadas) <= 0;
+  }).length;
+
+  const cantidadControlesPendientes = equiposActivos.filter((equipo) => {
+    if (equipo.dias_sin_control === null) {
+      return false;
+    }
+
+    return Number(equipo.dias_sin_control) >= 20;
+  }).length;
 
   const cargarHistorialEquipos = async () => {
     try {
@@ -752,7 +866,6 @@ function App() {
         .filter((registro) => registro.empresa)
         .map((registro) => {
           const nombreLimpio = registro.empresa.trim().replace(/\s+/g, " ");
-          console.log("nombreLimpio", nombreLimpio);
           return [normalizarEmpresa(nombreLimpio), nombreLimpio];
         }),
     ).values(),
@@ -871,9 +984,6 @@ function App() {
       return nuevaConfig;
     });
   };
-
-  console.log("COMPONENTES DEL PLAN:", componentesConfig);
-  console.log("SERVICE MOTOR:", componentesServiceMotor);
 
   return (
     <div className="app-layout">
@@ -1009,33 +1119,21 @@ function App() {
               </div>
 
               <div className="resumen-card alerta">
-                <span className="resumen-titulo">Alertas de Service</span>
+                <span className="resumen-titulo">Alertas de mantenimiento</span>
 
-                <strong>
-                  {
-                    equiposActivos.filter((equipo) => {
-                      const horas = Number(
-                        equipo.horas_restantes_service_motor,
-                      );
+                <strong>{cantidadAlertasMantenimiento}</strong>
 
-                      return (
-                        equipo.horas_restantes_service_motor !== null &&
-                        horas <= 50
-                      );
-                    }).length
-                  }
-                </strong>
-
-                <small>Próximos o vencidos</small>
+                <small>Requieren atención</small>
               </div>
             </section>
 
+            {/* ALERTAS */}
             {/* ALERTAS */}
             <section className="dashboard-seccion">
               <div className="dashboard-seccion-header">
                 <div>
                   <h2>Mantenimiento</h2>
-                  <p>Services próximos y vencidos</p>
+                  <p>Resumen de alertas de la flota</p>
                 </div>
 
                 <button
@@ -1050,59 +1148,18 @@ function App() {
                 </button>
               </div>
 
-              <div className="dashboard-alertas">
-                {equiposActivos.filter((equipo) => {
-                  const horas = Number(equipo.horas_restantes_service_motor);
+              <div className="dashboard-alertas-resumen">
+                <div className="dashboard-alerta-resumen">
+                  <span>🔴</span>
+                  <strong>{cantidadServicesVencidos}</strong>
+                  <p>Services vencidos</p>
+                </div>
 
-                  return (
-                    equipo.horas_restantes_service_motor !== null && horas <= 50
-                  );
-                }).length === 0 ? (
-                  <div className="sin-alertas">✓ No hay services próximos</div>
-                ) : (
-                  equiposActivos
-                    .filter((equipo) => {
-                      const horas = Number(
-                        equipo.horas_restantes_service_motor,
-                      );
-
-                      return (
-                        equipo.horas_restantes_service_motor !== null &&
-                        horas <= 50
-                      );
-                    })
-                    .slice(0, 5)
-                    .map((equipo) => {
-                      const horas = Number(
-                        equipo.horas_restantes_service_motor,
-                      );
-
-                      return (
-                        <div
-                          key={equipo.interno}
-                          className="dashboard-alerta-item"
-                        >
-                          <div>
-                            <strong>Interno {equipo.interno}</strong>
-
-                            <span>
-                              {equipo.marca} {equipo.modelo}
-                            </span>
-                          </div>
-
-                          {horas <= 0 ? (
-                            <span className="service-vencido">
-                              ✕ Vencido {Math.abs(horas)} hs
-                            </span>
-                          ) : (
-                            <span className="service-proximo">
-                              ⚠ Faltan {horas} hs
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })
-                )}
+                <div className="dashboard-alerta-resumen">
+                  <span>🟠</span>
+                  <strong>{cantidadControlesPendientes}</strong>
+                  <p>Controles de visitas</p>
+                </div>
               </div>
             </section>
 
@@ -1170,9 +1227,18 @@ function App() {
                     <h3>⚠ Mantenimientos próximos</h3>
 
                     {equiposConAlertaService.map((equipo) => {
-                      const horas = Number(
-                        equipo.horas_restantes_service_motor,
+                      const horasEstimadas = Number(
+                        equipo.horas_restantes_estimadas,
                       );
+
+                      const promedio = Number(equipo.promedio_horas_dia);
+
+                      const diasSinControl = Number(equipo.dias_sin_control);
+
+                      const diasEstimados =
+                        promedio > 0 && horasEstimadas > 0
+                          ? Math.ceil(horasEstimadas / promedio)
+                          : null;
 
                       return (
                         <div
@@ -1181,15 +1247,30 @@ function App() {
                         >
                           <strong>Interno {equipo.interno}</strong>
 
-                          {horas <= 0 ? (
-                            <span className="service-vencido">
-                              ✕ Service vencido por {Math.abs(horas)} hs
-                            </span>
-                          ) : (
-                            <span className="service-proximo">
-                              ⚠ Faltan {horas} hs para el service
-                            </span>
-                          )}
+                          {equipo.horas_restantes_estimadas !== null &&
+                            horasEstimadas <= 0 && (
+                              <span className="service-vencido">
+                                ✕ Service estimado vencido por{" "}
+                                {Math.abs(horasEstimadas)} hs
+                              </span>
+                            )}
+
+                          {equipo.horas_restantes_estimadas !== null &&
+                            horasEstimadas > 0 &&
+                            horasEstimadas <= 50 && (
+                              <span className="service-proximo">
+                                ⚠ Service estimado en {diasEstimados} días /{" "}
+                                {horasEstimadas} hs
+                              </span>
+                            )}
+
+                          {equipo.dias_sin_control !== null &&
+                            diasSinControl >= 20 && (
+                              <span className="control-pendiente">
+                                ⚠ Control pendiente — {diasSinControl} días sin
+                                lectura
+                              </span>
+                            )}
                         </div>
                       );
                     })}
@@ -2514,6 +2595,48 @@ function App() {
                 )}
 
                 <hr />
+
+                {proyeccionService && (
+                  <div className="proyeccion-service">
+                    <h3>Proyección de service</h3>
+
+                    <p>
+                      <strong>Promedio estimado:</strong>{" "}
+                      {proyeccionService.horasPromedioDia.toFixed(2)} hs/día
+                    </p>
+
+                    <p>
+                      <strong>Último horómetro registrado:</strong>{" "}
+                      {proyeccionService.ultimoHorometro} hs
+                    </p>
+
+                    <p>
+                      <strong>Días desde última visita:</strong>{" "}
+                      {proyeccionService.diasDesdeUltimaVisita}
+                    </p>
+
+                    <p>
+                      <strong>Horómetro estimado actual:</strong>{" "}
+                      {proyeccionService.horometroEstimado.toFixed(0)} hs
+                    </p>
+
+                    <p>
+                      <strong>Horas estimadas restantes:</strong>{" "}
+                      {proyeccionService.horasRestantes.toFixed(0)} hs
+                    </p>
+
+                    {proyeccionService.diasRestantes !== null && (
+                      <p>
+                        <strong>Service estimado en:</strong>{" "}
+                        {Math.max(
+                          0,
+                          Math.ceil(proyeccionService.diasRestantes),
+                        )}{" "}
+                        días aproximadamente
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {filtrosEspecialesEstado.length > 0 && (
                   <>

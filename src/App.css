@@ -346,11 +346,13 @@ header p {
   gap: 20px;
   padding: 12px 0;
   border-bottom: 1px solid #ddd;
+  white-space: nowrap;
 }
 
 .alerta-services-modal button {
   display: block;
   margin: 20px auto 0;
+  white-space: nowrap;
 }
 
 .alerta-services-overlay {
@@ -821,4 +823,64 @@ header p {
   background-color: #2563eb;
   color: white;
   transform: translateY(-1px);
+}
+
+.service-proximo {
+  background: #fff3cd;
+  color: #856404;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.service-vencido {
+  background: #f8d7da;
+  color: #842029;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.control-pendiente {
+  background: #ffe5b4;
+  color: #8a4b08;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.dashboard-alertas-resumen {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.dashboard-alerta-resumen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+}
+
+.dashboard-alerta-resumen span {
+  font-size: 20px;
+}
+
+.dashboard-alerta-resumen strong {
+  font-size: 22px;
+}
+
+.dashboard-alerta-resumen p {
+  margin: 0;
+  font-size: 14px;
+}
+
+@media (max-width: 800px) {
+  .dashboard-alertas-resumen {
+    grid-template-columns: 1fr;
+  }
 }
