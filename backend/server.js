@@ -647,10 +647,18 @@ app.get("/equipos/:interno/mantenimientos", async (req, res) => {
         c.nombre AS componente,
         c.codigo,
 
-        pc.frecuencia_horas,
+        COALESCE(
+          ex.frecuencia_horas,
+          pc.frecuencia_horas
+        ) AS frecuencia_horas,
+
         pc.cantidad,
         pc.unidad,
-        pc.opcional,
+
+        COALESCE(
+          ex.opcional,
+          pc.opcional
+        ) AS opcional,
 
         m.fecha AS fecha_ultimo_mantenimiento,
         m.horometro AS horometro_ultimo_mantenimiento,
@@ -660,12 +668,21 @@ app.get("/equipos/:interno/mantenimientos", async (req, res) => {
         ) AS horas_usadas,
 
         (
-          m.horometro + pc.frecuencia_horas
+          m.horometro +
+          COALESCE(
+            ex.frecuencia_horas,
+            pc.frecuencia_horas
+          )
         ) AS proximo_mantenimiento,
 
         (
-          (m.horometro + pc.frecuencia_horas)
-          - e.horometro_actual
+          (
+            m.horometro +
+            COALESCE(
+              ex.frecuencia_horas,
+              pc.frecuencia_horas
+            )
+          ) - e.horometro_actual
         ) AS horas_restantes
 
       FROM equipos e
@@ -673,11 +690,52 @@ app.get("/equipos/:interno/mantenimientos", async (req, res) => {
       JOIN planes_mantenimiento p
         ON p.id = e.plan_mantenimiento_id
 
-      JOIN plan_componentes pc
-        ON pc.plan_id = p.id
+      /*
+        COMPONENTES DEL PLAN BASE
+        + COMPONENTES AGREGADOS POR EXCEPCIÓN
+      */
+      JOIN LATERAL (
+        SELECT
+          pc1.componente_id,
+          pc1.frecuencia_horas,
+          pc1.cantidad,
+          pc1.unidad,
+          pc1.opcional
+
+        FROM plan_componentes pc1
+
+        WHERE pc1.plan_id = p.id
+
+          AND NOT EXISTS (
+            SELECT 1
+            FROM equipo_componentes_excepciones ex1
+            WHERE ex1.equipo_id = e.id
+              AND ex1.componente_id = pc1.componente_id
+              AND ex1.accion = 'EXCLUIR'
+          )
+
+        UNION ALL
+
+        SELECT
+          ex2.componente_id,
+          ex2.frecuencia_horas,
+          NULL AS cantidad,
+          NULL AS unidad,
+          ex2.opcional
+
+        FROM equipo_componentes_excepciones ex2
+
+        WHERE ex2.equipo_id = e.id
+          AND ex2.accion = 'AGREGAR'
+      ) pc ON true
 
       JOIN componentes_mantenimiento c
         ON c.id = pc.componente_id
+
+      LEFT JOIN equipo_componentes_excepciones ex
+        ON ex.equipo_id = e.id
+        AND ex.componente_id = c.id
+        AND ex.accion = 'AGREGAR'
 
       LEFT JOIN LATERAL (
         SELECT
@@ -698,11 +756,21 @@ app.get("/equipos/:interno/mantenimientos", async (req, res) => {
 
       WHERE e.interno = $1
 
-        AND pc.opcional = FALSE
-        AND pc.frecuencia_horas > 300
+        AND COALESCE(
+          ex.opcional,
+          pc.opcional
+        ) = FALSE
+
+        AND COALESCE(
+          ex.frecuencia_horas,
+          pc.frecuencia_horas
+        ) > 300
 
       ORDER BY
-        pc.frecuencia_horas,
+        COALESCE(
+          ex.frecuencia_horas,
+          pc.frecuencia_horas
+        ),
         c.nombre
       `,
       [interno]
@@ -936,10 +1004,18 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
         c.nombre AS componente,
         c.codigo,
 
-        pc.frecuencia_horas,
+        COALESCE(
+          ex.frecuencia_horas,
+          pc.frecuencia_horas
+        ) AS frecuencia_horas,
+
         pc.cantidad,
         pc.unidad,
-        pc.opcional,
+
+        COALESCE(
+          ex.opcional,
+          pc.opcional
+        ) AS opcional,
 
         m.fecha AS fecha_ultimo_cambio,
         m.horometro AS horometro_ultimo_cambio,
@@ -950,12 +1026,21 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
         ) AS horas_usadas,
 
         (
-          m.horometro + pc.frecuencia_horas
+          m.horometro +
+          COALESCE(
+            ex.frecuencia_horas,
+            pc.frecuencia_horas
+          )
         ) AS proximo_cambio,
 
         (
-          (m.horometro + pc.frecuencia_horas)
-          - e.horometro_actual
+          (
+            m.horometro +
+            COALESCE(
+              ex.frecuencia_horas,
+              pc.frecuencia_horas
+            )
+          ) - e.horometro_actual
         ) AS horas_restantes
 
       FROM equipos e
@@ -963,11 +1048,52 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
       JOIN planes_mantenimiento p
         ON p.id = e.plan_mantenimiento_id
 
-      JOIN plan_componentes pc
-        ON pc.plan_id = p.id
+      /*
+        COMPONENTES DEL PLAN BASE
+        + COMPONENTES AGREGADOS POR EXCEPCIÓN
+      */
+      JOIN LATERAL (
+        SELECT
+          pc1.componente_id,
+          pc1.frecuencia_horas,
+          pc1.cantidad,
+          pc1.unidad,
+          pc1.opcional
+
+        FROM plan_componentes pc1
+
+        WHERE pc1.plan_id = p.id
+
+          AND NOT EXISTS (
+            SELECT 1
+            FROM equipo_componentes_excepciones ex1
+            WHERE ex1.equipo_id = e.id
+              AND ex1.componente_id = pc1.componente_id
+              AND ex1.accion = 'EXCLUIR'
+          )
+
+        UNION ALL
+
+        SELECT
+          ex2.componente_id,
+          ex2.frecuencia_horas,
+          NULL AS cantidad,
+          NULL AS unidad,
+          ex2.opcional
+
+        FROM equipo_componentes_excepciones ex2
+
+        WHERE ex2.equipo_id = e.id
+          AND ex2.accion = 'AGREGAR'
+      ) pc ON true
 
       JOIN componentes_mantenimiento c
         ON c.id = pc.componente_id
+
+      LEFT JOIN equipo_componentes_excepciones ex
+        ON ex.equipo_id = e.id
+        AND ex.componente_id = c.id
+        AND ex.accion = 'AGREGAR'
 
       LEFT JOIN LATERAL (
         SELECT
@@ -989,10 +1115,16 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
 
       WHERE e.interno = $1
 
-        AND pc.opcional = TRUE
+        AND COALESCE(
+          ex.opcional,
+          pc.opcional
+        ) = TRUE
 
       ORDER BY
-        pc.frecuencia_horas,
+        COALESCE(
+          ex.frecuencia_horas,
+          pc.frecuencia_horas
+        ),
         c.nombre
       `,
       [interno]
