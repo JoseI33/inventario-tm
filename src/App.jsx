@@ -36,6 +36,15 @@ function App() {
   const [filtroTipoContratoHistorial, setFiltroTipoContratoHistorial] =
     useState("");
 
+  // INFORMES TECNICOS
+  const [equipoInforme, setEquipoInforme] = useState(null);
+  const [busquedaInternoInforme, setBusquedaInternoInforme] = useState("");
+
+  // UBICACIONES
+  const [ubicaciones, setUbicaciones] = useState([]);
+  const [busquedaUbicacion, setBusquedaUbicacion] = useState("");
+  const [ubicacionInforme, setUbicacionInforme] = useState(null);
+
   // HISTORIAL DE TRABAJO
   const [historialEquipos, setHistorialEquipos] = useState([]);
 
@@ -92,6 +101,17 @@ function App() {
 
   const [mensajeNuevoEquipo, setMensajeNuevoEquipo] = useState("");
   const [equiposActivos, setEquiposActivos] = useState([]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/ubicaciones")
+      .then((res) => res.json())
+      .then((data) => {
+        setUbicaciones(data);
+      })
+      .catch((error) => {
+        console.error("Error cargando ubicaciones:", error);
+      });
+  }, []);
 
   useEffect(() => {
     const cargarPlanesMantenimiento = async () => {
@@ -985,6 +1005,17 @@ function App() {
     });
   };
 
+  const ubicacionesFiltradas =
+    busquedaUbicacion.trim().length >= 2
+      ? ubicaciones
+          .filter((ubicacion) =>
+            ubicacion.nombre
+              .toLowerCase()
+              .includes(busquedaUbicacion.toLowerCase()),
+          )
+          .slice(0, 8)
+      : [];
+
   return (
     <div className="app-layout">
       {/* ================================= */}
@@ -1053,6 +1084,13 @@ function App() {
             }}
           >
             🔧 Equipo / Mantenimiento
+          </button>
+
+          <button
+            onClick={() => setModulo("informes-tecnicos")}
+            className={modulo === "informes-tecnicos" ? "activo" : ""}
+          >
+            Informes técnicos
           </button>
 
           <button
@@ -1608,6 +1646,105 @@ function App() {
             )}
           </main>
         )}
+
+        {modulo === "informes-tecnicos" && (
+          <section className="modulo-informes">
+            <h2>Informes técnicos</h2>
+
+            <button onClick={() => setModulo("nuevo-informe")}>
+              + Nueva orden de trabajo
+            </button>
+          </section>
+        )}
+
+        {modulo === "nuevo-informe" && (
+          <section className="modulo-informes">
+            <h2>Nueva Orden de Trabajo</h2>
+
+            <div>
+              <label>Interno</label>
+
+              <input
+                type="text"
+                placeholder="Ej: 81"
+                value={busquedaInternoInforme}
+                onChange={(e) => {
+                  const valor = e.target.value;
+
+                  setBusquedaInternoInforme(valor);
+
+                  const encontrado = equipos.find(
+                    (equipo) =>
+                      String(equipo.interno).toLowerCase() ===
+                      valor.trim().toLowerCase(),
+                  );
+
+                  setEquipoInforme(encontrado || null);
+                }}
+              />
+            </div>
+
+            {equipoInforme && (
+              <div>
+                <h3>Datos del equipo</h3>
+
+                <p>
+                  <strong>Interno:</strong> {equipoInforme.interno}
+                </p>
+
+                <p>
+                  <strong>Marca:</strong> {equipoInforme.marca || "-"}
+                </p>
+
+                <p>
+                  <strong>Modelo:</strong> {equipoInforme.modelo || "-"}
+                </p>
+
+                <p>
+                  <strong>Horómetro actual:</strong>{" "}
+                  {equipoInforme.horometro_actual ?? "-"}
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
+        <div>
+          <label>Lugar del trabajo</label>
+
+          <input
+            type="text"
+            placeholder="Buscar finca, planta, empaque..."
+            value={busquedaUbicacion}
+            onChange={(e) => {
+              setBusquedaUbicacion(e.target.value);
+              setUbicacionInforme(null);
+            }}
+          />
+
+          {!ubicacionInforme && ubicacionesFiltradas.length > 0 && (
+            <div>
+              {ubicacionesFiltradas.map((ubicacion) => (
+                <button
+                  type="button"
+                  key={ubicacion.id}
+                  onClick={() => {
+                    setUbicacionInforme(ubicacion);
+                    setBusquedaUbicacion(ubicacion.nombre);
+                  }}
+                >
+                  {ubicacion.nombre}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {ubicacionInforme && (
+            <p>
+              <strong>Ubicación seleccionada:</strong> {ubicacionInforme.nombre}
+            </p>
+          )}
+        </div>
 
         {modulo === "historial-equipos" && (
           <main className="panel panel-tabla">

@@ -987,6 +987,104 @@ app.post("/equipos/:interno/service-completo", async (req, res) => {
   }
 });
 
+app.post("/informes-tecnicos", async (req, res) => {
+  const {
+    interno,
+    fecha,
+    tipo_trabajo,
+    horometro,
+    contacto_cliente,
+    reclamo_cliente,
+    trabajo_realizado,
+    observaciones,
+    estado_final,
+    mecanico,
+    hora_inicio,
+    hora_fin,
+    horas_mano_obra,
+    movilidad_km,
+  } = req.body;
+
+  try {
+    // Buscar el equipo por interno
+    const equipo = await pool.query(
+      `
+      SELECT id
+      FROM equipos
+      WHERE interno = $1
+      `,
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      return res.status(404).json({
+        error: "Equipo no encontrado",
+      });
+    }
+
+    const equipoId = equipo.rows[0].id;
+
+    // Generar número de OT
+    const numeroOT = `OT-${Date.now()}`;
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO informes_tecnicos (
+        numero_ot,
+        equipo_id,
+        fecha,
+        tipo_trabajo,
+        horometro,
+        contacto_cliente,
+        reclamo_cliente,
+        trabajo_realizado,
+        observaciones,
+        estado_final,
+        mecanico,
+        hora_inicio,
+        hora_fin,
+        horas_mano_obra,
+        movilidad_km
+      )
+      VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15
+      )
+      RETURNING *
+      `,
+      [
+        numeroOT,
+        equipoId,
+        fecha,
+        tipo_trabajo,
+        horometro ? Number(horometro) : null,
+        contacto_cliente || null,
+        reclamo_cliente || null,
+        trabajo_realizado || null,
+        observaciones || null,
+        estado_final || null,
+        mecanico || null,
+        hora_inicio || null,
+        hora_fin || null,
+        horas_mano_obra ? Number(horas_mano_obra) : null,
+        movilidad_km ? Number(movilidad_km) : null,
+      ]
+    );
+
+    res.status(201).json({
+      mensaje: "Informe técnico creado correctamente",
+      informe: resultado.rows[0],
+    });
+  } catch (error) {
+    console.error("Error al crear informe técnico:", error);
+
+    res.status(500).json({
+      error: "Error al crear informe técnico",
+    });
+  }
+});
+
 app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
   const { interno } = req.params;
 
@@ -1482,6 +1580,31 @@ app.get("/equipos/:interno/ultimos-horometros", async (req, res) => {
 
     res.status(500).json({
       error: "Error al consultar últimos horómetros",
+    });
+  }
+});
+
+app.get("/ubicaciones", async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        id,
+        nombre,
+        latitud,
+        longitud
+      FROM ubicaciones
+      WHERE activa = TRUE
+      ORDER BY nombre
+      `
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error al consultar ubicaciones:", error);
+
+    res.status(500).json({
+      error: "Error al consultar ubicaciones",
     });
   }
 });
