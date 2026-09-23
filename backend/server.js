@@ -989,21 +989,23 @@ app.post("/equipos/:interno/service-completo", async (req, res) => {
 
 app.post("/informes-tecnicos", async (req, res) => {
   const {
-    interno,
-    fecha,
-    tipo_trabajo,
-    horometro,
-    contacto_cliente,
-    reclamo_cliente,
-    trabajo_realizado,
-    observaciones,
-    estado_final,
-    mecanico,
-    hora_inicio,
-    hora_fin,
-    horas_mano_obra,
-    movilidad_km,
-  } = req.body;
+  interno,
+  fecha,
+  tipo_trabajo,
+  horometro,
+  cliente,
+  contacto_cliente,
+  reclamo_cliente,
+  trabajo_realizado,
+  observaciones,
+  estado_final,
+  mecanico,
+  hora_inicio,
+  hora_fin,
+  horas_mano_obra,
+  movilidad_km,
+  ubicacion_id,
+} = req.body;
 
   try {
     // Buscar el equipo por interno
@@ -1028,50 +1030,71 @@ app.post("/informes-tecnicos", async (req, res) => {
     const numeroOT = `OT-${Date.now()}`;
 
     const resultado = await pool.query(
-      `
-      INSERT INTO informes_tecnicos (
-        numero_ot,
-        equipo_id,
-        fecha,
-        tipo_trabajo,
-        horometro,
-        contacto_cliente,
-        reclamo_cliente,
-        trabajo_realizado,
-        observaciones,
-        estado_final,
-        mecanico,
-        hora_inicio,
-        hora_fin,
-        horas_mano_obra,
-        movilidad_km
-      )
-      VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15
-      )
-      RETURNING *
-      `,
-      [
-        numeroOT,
-        equipoId,
-        fecha,
-        tipo_trabajo,
-        horometro ? Number(horometro) : null,
-        contacto_cliente || null,
-        reclamo_cliente || null,
-        trabajo_realizado || null,
-        observaciones || null,
-        estado_final || null,
-        mecanico || null,
-        hora_inicio || null,
-        hora_fin || null,
-        horas_mano_obra ? Number(horas_mano_obra) : null,
-        movilidad_km ? Number(movilidad_km) : null,
-      ]
-    );
-
+  `
+  INSERT INTO informes_tecnicos (
+    numero_ot,
+    equipo_id,
+    fecha,
+    tipo_trabajo,
+    horometro,
+    cliente,
+    contacto_cliente,
+    reclamo_cliente,
+    trabajo_realizado,
+    observaciones,
+    estado_final,
+    mecanico,
+    hora_inicio,
+    hora_fin,
+    horas_mano_obra,
+    movilidad_km,
+    ubicacion_id
+  )
+  VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15,
+    $16,
+    $17
+  )
+  RETURNING *
+  `,
+  [
+    numeroOT,                              // $1
+    equipoId,                              // $2
+    fecha,                                 // $3
+    tipo_trabajo,                          // $4
+    horometro ? Number(horometro) : null,  // $5
+    cliente || null,                       // $6
+    contacto_cliente || null,              // $7
+    reclamo_cliente || null,               // $8
+    trabajo_realizado || null,             // $9
+    observaciones || null,                 // $10
+    estado_final || null,                  // $11
+    mecanico || null,                      // $12
+    hora_inicio || null,                   // $13
+    hora_fin || null,                      // $14
+    horas_mano_obra
+      ? Number(horas_mano_obra)
+      : null,                              // $15
+    movilidad_km
+      ? Number(movilidad_km)
+      : null,                              // $16
+    ubicacion_id || null,                  // $17
+  ]
+);
     res.status(201).json({
       mensaje: "Informe técnico creado correctamente",
       informe: resultado.rows[0],
@@ -1081,6 +1104,47 @@ app.post("/informes-tecnicos", async (req, res) => {
 
     res.status(500).json({
       error: "Error al crear informe técnico",
+    });
+  }
+});
+
+app.post("/ubicaciones", async (req, res) => {
+  const { nombre, latitud, longitud } = req.body;
+
+  try {
+    if (!nombre || latitud === undefined || longitud === undefined) {
+      return res.status(400).json({
+        error: "Nombre, latitud y longitud son obligatorios",
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO ubicaciones (
+        nombre,
+        latitud,
+        longitud,
+        activa
+      )
+      VALUES ($1, $2, $3, TRUE)
+      RETURNING id, nombre, latitud, longitud
+      `,
+      [
+        nombre.trim().toUpperCase(),
+        Number(latitud),
+        Number(longitud),
+      ]
+    );
+
+    res.status(201).json({
+      mensaje: "Ubicación creada correctamente",
+      ubicacion: resultado.rows[0],
+    });
+  } catch (error) {
+    console.error("Error al crear ubicación:", error);
+
+    res.status(500).json({
+      error: "Error al crear ubicación",
     });
   }
 });
@@ -1605,6 +1669,100 @@ app.get("/ubicaciones", async (req, res) => {
 
     res.status(500).json({
       error: "Error al consultar ubicaciones",
+    });
+  }
+});
+
+app.get("/distancia-traslado/:ubicacionId", async (req, res) => {
+  const { ubicacionId } = req.params;
+
+  try {
+    // Base fija TM ROLDAN
+    const origen = await pool.query(
+      `
+      SELECT id, nombre, latitud, longitud
+      FROM ubicaciones
+      WHERE id = 195
+      `
+    );
+
+    if (origen.rows.length === 0) {
+      return res.status(404).json({
+        error: "No se encontró la ubicación de TM ROLDAN",
+      });
+    }
+
+    // Destino seleccionado en la OT
+    const destino = await pool.query(
+      `
+      SELECT id, nombre, latitud, longitud
+      FROM ubicaciones
+      WHERE id = $1
+        AND activa = TRUE
+      `,
+      [ubicacionId]
+    );
+
+    if (destino.rows.length === 0) {
+      return res.status(404).json({
+        error: "Ubicación de destino no encontrada",
+      });
+    }
+
+    const base = origen.rows[0];
+    const lugar = destino.rows[0];
+
+    // OSRM utiliza longitud,latitud
+    const url =
+      `https://router.project-osrm.org/route/v1/driving/` +
+      `${base.longitud},${base.latitud};` +
+      `${lugar.longitud},${lugar.latitud}` +
+      `?overview=false`;
+
+    const respuestaRuta = await fetch(url);
+
+    if (!respuestaRuta.ok) {
+      throw new Error("No se pudo consultar la ruta");
+    }
+
+    const datosRuta = await respuestaRuta.json();
+
+    if (!datosRuta.routes || datosRuta.routes.length === 0) {
+      return res.status(404).json({
+        error: "No se encontró una ruta hacia esa ubicación",
+      });
+    }
+
+    const ruta = datosRuta.routes[0];
+
+    // OSRM devuelve metros y segundos
+    const distanciaIdaKm = ruta.distance / 1000;
+    const duracionIdaMin = ruta.duration / 60;
+
+    res.json({
+      origen: base.nombre,
+      destino: lugar.nombre,
+
+      distancia_ida_km: Number(
+        distanciaIdaKm.toFixed(1)
+      ),
+
+      distancia_total_km: Number(
+        (distanciaIdaKm * 2).toFixed(1)
+      ),
+
+      duracion_ida_min: Math.round(
+        duracionIdaMin
+      ),
+    });
+  } catch (error) {
+    console.error(
+      "Error calculando traslado:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Error al calcular el traslado",
     });
   }
 });

@@ -45,6 +45,18 @@ function App() {
   const [busquedaUbicacion, setBusquedaUbicacion] = useState("");
   const [ubicacionInforme, setUbicacionInforme] = useState(null);
 
+  const [mostrarNuevaUbicacion, setMostrarNuevaUbicacion] = useState(false);
+
+  const [nuevaUbicacion, setNuevaUbicacion] = useState({
+    nombre: "",
+    latitud: null,
+    longitud: null,
+  });
+
+  const [obteniendoUbicacion, setObteniendoUbicacion] = useState(false);
+
+  const [trasladoInforme, setTrasladoInforme] = useState(null);
+
   // HISTORIAL DE TRABAJO
   const [historialEquipos, setHistorialEquipos] = useState([]);
 
@@ -80,6 +92,9 @@ function App() {
 
   // PROYECCION DE SERVICE
   const [proyeccionService, setProyeccionService] = useState(null);
+
+  // NUEVO CONTRATO
+  const [mostrarDetalleTraslado, setMostrarDetalleTraslado] = useState(false);
 
   const [nuevoContrato, setNuevoContrato] = useState({
     empresa: "",
@@ -211,6 +226,21 @@ function App() {
       setProyeccionService(null);
     }
   };
+
+  const [datosInforme, setDatosInforme] = useState({
+    fecha: new Date().toISOString().split("T")[0],
+    tipo_trabajo: "",
+    horometro: "",
+    cliente: "",
+    contacto_cliente: "",
+    reclamo_cliente: "",
+    trabajo_realizado: "",
+    observaciones: "",
+    estado_final: "",
+    mecanico: "",
+    hora_inicio: "",
+    hora_fin: "",
+  });
 
   useEffect(() => {
     fetch("http://localhost:3000/equipos-inactivos")
@@ -1016,6 +1046,183 @@ function App() {
           .slice(0, 8)
       : [];
 
+  const calcularTraslado = async (ubicacionId) => {
+    try {
+      setTrasladoInforme(null);
+
+      const respuesta = await fetch(
+        `http://localhost:3000/distancia-traslado/${ubicacionId}`,
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudo calcular el traslado");
+      }
+
+      const datos = await respuesta.json();
+
+      setTrasladoInforme(datos);
+    } catch (error) {
+      console.error("Error calculando traslado:", error);
+      setTrasladoInforme(null);
+    }
+  };
+
+  const obtenerUbicacionActual = () => {
+    if (!navigator.geolocation) {
+      alert("Este dispositivo no permite obtener la ubicación.");
+      return;
+    }
+
+    setObteniendoUbicacion(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (posicion) => {
+        setNuevaUbicacion((anterior) => ({
+          ...anterior,
+          latitud: posicion.coords.latitude,
+          longitud: posicion.coords.longitude,
+        }));
+
+        setObteniendoUbicacion(false);
+      },
+
+      (error) => {
+        console.error("Error obteniendo ubicación:", error);
+
+        alert(
+          "No se pudo obtener la ubicación. Verificá los permisos de ubicación.",
+        );
+
+        setObteniendoUbicacion(false);
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      },
+    );
+  };
+
+  const guardarNuevaUbicacion = async () => {
+    if (!nuevaUbicacion.nombre.trim()) {
+      alert("Ingresá un nombre para la ubicación.");
+      return;
+    }
+
+    if (nuevaUbicacion.latitud === null || nuevaUbicacion.longitud === null) {
+      alert("Primero obtené la ubicación.");
+      return;
+    }
+
+    try {
+      const respuesta = await fetch("http://localhost:3000/ubicaciones", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(nuevaUbicacion),
+      });
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error || "No se pudo guardar la ubicación");
+      }
+
+      const ubicacionGuardada = datos.ubicacion;
+
+      // Agregarla al listado sin volver a cargar todo
+      setUbicaciones((anteriores) => [...anteriores, ubicacionGuardada]);
+
+      // Seleccionarla automáticamente
+      setUbicacionInforme(ubicacionGuardada);
+      setBusquedaUbicacion(ubicacionGuardada.nombre);
+
+      // Cerrar formulario
+      setMostrarNuevaUbicacion(false);
+
+      setNuevaUbicacion({
+        nombre: "",
+        latitud: null,
+        longitud: null,
+      });
+
+      // Calcular traslado automáticamente
+      calcularTraslado(ubicacionGuardada.id);
+    } catch (error) {
+      console.error("Error guardando ubicación:", error);
+
+      alert("No se pudo guardar la ubicación.");
+    }
+  };
+
+  const guardarInformeTecnico = async () => {
+    if (!equipoInforme) {
+      alert("Seleccioná un equipo.");
+      return;
+    }
+
+    if (!ubicacionInforme) {
+      alert("Seleccioná el lugar del trabajo.");
+      return;
+    }
+
+    if (!datosInforme.fecha) {
+      alert("Ingresá la fecha.");
+      return;
+    }
+
+    if (!datosInforme.horometro) {
+      alert("Ingresá el horómetro.");
+      return;
+    }
+
+    if (!datosInforme.tipo_trabajo) {
+      alert("Seleccioná el tipo de trabajo.");
+      return;
+    }
+
+    if (!datosInforme.trabajo_realizado.trim()) {
+      alert("Ingresá el trabajo realizado.");
+      return;
+    }
+
+    try {
+      const respuesta = await fetch("http://localhost:3000/informes-tecnicos", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          interno: equipoInforme.interno,
+
+          ...datosInforme,
+
+          ubicacion_id: ubicacionInforme.id,
+
+          movilidad_km: trasladoInforme?.distancia_total_km ?? null,
+        }),
+      });
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error || "No se pudo guardar el informe");
+      }
+
+      alert(`Informe ${datos.informe.numero_ot} guardado correctamente`);
+
+      console.log("Informe guardado:", datos.informe);
+    } catch (error) {
+      console.error("Error guardando informe:", error);
+
+      alert("No se pudo guardar el informe técnico.");
+    }
+  };
+
   return (
     <div className="app-layout">
       {/* ================================= */}
@@ -1087,10 +1294,16 @@ function App() {
           </button>
 
           <button
-            onClick={() => setModulo("informes-tecnicos")}
-            className={modulo === "informes-tecnicos" ? "activo" : ""}
+            className={`sidebar-item ${
+              modulo === "informes-tecnicos" || modulo === "nuevo-informe"
+                ? "activo"
+                : ""
+            }`}
+            onClick={() => {
+              setModulo("informes-tecnicos");
+            }}
           >
-            Informes técnicos
+            📋 Informes técnicos
           </button>
 
           <button
@@ -1661,91 +1874,456 @@ function App() {
           <section className="modulo-informes">
             <h2>Nueva Orden de Trabajo</h2>
 
-            <div>
-              <label>Interno</label>
+            <div className="ot-resumen-grid">
+              {/* =========================
+          EQUIPO
+      ========================== */}
+              <div className="ot-card">
+                <h3>🚜 Equipo</h3>
 
-              <input
-                type="text"
-                placeholder="Ej: 81"
-                value={busquedaInternoInforme}
-                onChange={(e) => {
-                  const valor = e.target.value;
+                <label>Interno</label>
 
-                  setBusquedaInternoInforme(valor);
+                <input
+                  type="text"
+                  placeholder="Ej: 81"
+                  value={busquedaInternoInforme}
+                  onChange={(e) => {
+                    const valor = e.target.value;
 
-                  const encontrado = equipos.find(
-                    (equipo) =>
-                      String(equipo.interno).toLowerCase() ===
-                      valor.trim().toLowerCase(),
-                  );
+                    setBusquedaInternoInforme(valor);
 
-                  setEquipoInforme(encontrado || null);
-                }}
-              />
-            </div>
+                    const encontrado = equipos.find(
+                      (equipo) =>
+                        String(equipo.interno).toLowerCase() ===
+                        valor.trim().toLowerCase(),
+                    );
 
-            {equipoInforme && (
-              <div>
-                <h3>Datos del equipo</h3>
+                    setEquipoInforme(encontrado || null);
+                  }}
+                />
 
-                <p>
-                  <strong>Interno:</strong> {equipoInforme.interno}
-                </p>
+                {equipoInforme && (
+                  <div className="equipo-seleccionado">
+                    <strong>{equipoInforme.marca || "-"}</strong>
 
-                <p>
-                  <strong>Marca:</strong> {equipoInforme.marca || "-"}
-                </p>
+                    <span>Modelo: {equipoInforme.modelo || "-"}</span>
 
-                <p>
-                  <strong>Modelo:</strong> {equipoInforme.modelo || "-"}
-                </p>
+                    <span>
+                      Horómetro: {equipoInforme.horometro_actual ?? "-"}
+                    </span>
 
-                <p>
-                  <strong>Horómetro actual:</strong>{" "}
-                  {equipoInforme.horometro_actual ?? "-"}
-                </p>
+                    <span>Interno: {equipoInforme.interno}</span>
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* =========================
+          LUGAR DEL TRABAJO
+      ========================== */}
+              <div className="ot-card">
+                <h3>📍 Lugar del trabajo</h3>
+
+                <input
+                  type="text"
+                  placeholder="Buscar finca, planta, empaque..."
+                  value={busquedaUbicacion}
+                  onChange={(e) => {
+                    setBusquedaUbicacion(e.target.value);
+
+                    setUbicacionInforme(null);
+
+                    // Evita mostrar el traslado de
+                    // la ubicación anterior
+                    setTrasladoInforme(null);
+                  }}
+                />
+
+                {/* RESULTADOS DEL BUSCADOR */}
+
+                {!ubicacionInforme && ubicacionesFiltradas.length > 0 && (
+                  <div className="resultados-ubicacion">
+                    {ubicacionesFiltradas.map((ubicacion) => (
+                      <button
+                        type="button"
+                        key={ubicacion.id}
+                        onClick={() => {
+                          setUbicacionInforme(ubicacion);
+
+                          setBusquedaUbicacion(ubicacion.nombre);
+
+                          calcularTraslado(ubicacion.id);
+                        }}
+                      >
+                        {ubicacion.nombre}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* UBICACIÓN SELECCIONADA */}
+
+                {ubicacionInforme && (
+                  <div className="ubicacion-seleccionada">
+                    <span>Ubicación seleccionada</span>
+
+                    <strong>{ubicacionInforme.nombre}</strong>
+                  </div>
+                )}
+
+                {/* UBICACIÓN NO ENCONTRADA */}
+
+                {busquedaUbicacion.trim().length >= 2 &&
+                  ubicacionesFiltradas.length === 0 &&
+                  !ubicacionInforme &&
+                  !mostrarNuevaUbicacion && (
+                    <div className="ubicacion-no-encontrada">
+                      <p>No encontramos esa ubicación.</p>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMostrarNuevaUbicacion(true);
+
+                          setNuevaUbicacion({
+                            nombre: busquedaUbicacion,
+                            latitud: null,
+                            longitud: null,
+                          });
+                        }}
+                      >
+                        + Agregar nueva ubicación
+                      </button>
+                    </div>
+                  )}
+
+                {/* CREAR NUEVA UBICACIÓN */}
+
+                {mostrarNuevaUbicacion && (
+                  <div className="nueva-ubicacion">
+                    <h4>Nueva ubicación</h4>
+
+                    <label>Nombre</label>
+
+                    <input
+                      type="text"
+                      value={nuevaUbicacion.nombre}
+                      onChange={(e) =>
+                        setNuevaUbicacion({
+                          ...nuevaUbicacion,
+                          nombre: e.target.value,
+                        })
+                      }
+                    />
+
+                    <button type="button" onClick={obtenerUbicacionActual}>
+                      {obteniendoUbicacion
+                        ? "Obteniendo ubicación..."
+                        : "📍 Usar mi ubicación actual"}
+                    </button>
+
+                    {nuevaUbicacion.latitud !== null &&
+                      nuevaUbicacion.longitud !== null && (
+                        <div className="coordenadas-obtenidas">
+                          <p>✓ Ubicación obtenida</p>
+
+                          <small>
+                            {nuevaUbicacion.latitud.toFixed(6)},{" "}
+                            {nuevaUbicacion.longitud.toFixed(6)}
+                          </small>
+
+                          <button type="button" onClick={guardarNuevaUbicacion}>
+                            Guardar ubicación
+                          </button>
+                        </div>
+                      )}
+                  </div>
+                )}
+              </div>
+
+              {/* =========================
+          TRASLADO
+      ========================== */}
+              <div className="ot-card">
+                <h3>🚙 Traslado</h3>
+
+                {trasladoInforme ? (
+                  <>
+                    <div className="traslado-principal">
+                      <span>Ida y vuelta</span>
+
+                      <strong>{trasladoInforme.distancia_total_km} km</strong>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-detalle-traslado"
+                      onClick={() =>
+                        setMostrarDetalleTraslado(!mostrarDetalleTraslado)
+                      }
+                    >
+                      {mostrarDetalleTraslado
+                        ? "Ocultar detalles"
+                        : "Ver detalles del traslado"}
+                    </button>
+
+                    {mostrarDetalleTraslado && (
+                      <div className="traslado-detalle">
+                        <p>
+                          <strong>Desde:</strong> {trasladoInforme.origen}
+                        </p>
+
+                        <p>
+                          <strong>Hasta:</strong> {trasladoInforme.destino}
+                        </p>
+
+                        <p>
+                          <strong>Distancia de ida:</strong>{" "}
+                          {trasladoInforme.distancia_ida_km} km
+                        </p>
+
+                        <p>
+                          <strong>Tiempo estimado:</strong>{" "}
+                          {trasladoInforme.duracion_ida_min} min
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="sin-traslado">
+                    Seleccioná una ubicación para calcular el traslado.
+                  </p>
+                )}
+              </div>
+            </div>
           </section>
         )}
 
-        <div>
-          <label>Lugar del trabajo</label>
-
-          <input
-            type="text"
-            placeholder="Buscar finca, planta, empaque..."
-            value={busquedaUbicacion}
-            onChange={(e) => {
-              setBusquedaUbicacion(e.target.value);
-              setUbicacionInforme(null);
-            }}
-          />
-
-          {!ubicacionInforme && ubicacionesFiltradas.length > 0 && (
-            <div>
-              {ubicacionesFiltradas.map((ubicacion) => (
-                <button
-                  type="button"
-                  key={ubicacion.id}
-                  onClick={() => {
-                    setUbicacionInforme(ubicacion);
-                    setBusquedaUbicacion(ubicacion.nombre);
-                  }}
-                >
-                  {ubicacion.nombre}
-                </button>
-              ))}
+        {equipoInforme && ubicacionInforme && (
+          <div className="formulario-informe">
+            <div className="formulario-informe-header">
+              <div>
+                <h3>Datos del informe</h3>
+                <p>
+                  Completá la información correspondiente al trabajo realizado.
+                </p>
+              </div>
             </div>
-          )}
 
-          {ubicacionInforme && (
-            <p>
-              <strong>Ubicación seleccionada:</strong> {ubicacionInforme.nombre}
-            </p>
-          )}
-        </div>
+            {/* PRIMERA FILA */}
+            <div className="informe-grid informe-grid-5">
+              <div className="campo-informe">
+                <label>Fecha</label>
+                <input
+                  type="date"
+                  value={datosInforme.fecha}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      fecha: e.target.value,
+                    })
+                  }
+                />
+              </div>
 
+              <div className="campo-informe">
+                <label>Horómetro</label>
+                <input
+                  type="number"
+                  value={datosInforme.horometro}
+                  placeholder={`Actual: ${
+                    equipoInforme.horometro_actual ?? "-"
+                  }`}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      horometro: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="campo-informe">
+                <label>Tipo de trabajo</label>
+
+                <select
+                  value={datosInforme.tipo_trabajo}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      tipo_trabajo: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Seleccionar</option>
+                  <option value="Reparación">Reparación</option>
+                  <option value="Service">Service</option>
+                  <option value="Control">Control</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <div className="campo-informe">
+                <label>Empresa cliente</label>
+
+                <input
+                  type="text"
+                  placeholder="Ej: San Miguel"
+                  value={datosInforme.cliente}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      cliente: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="campo-informe">
+                <label>Contacto del cliente</label>
+                <input
+                  type="text"
+                  placeholder="Nombre del contacto"
+                  value={datosInforme.contacto_cliente}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      contacto_cliente: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* SEGUNDA FILA */}
+            <div className="informe-grid informe-grid-2">
+              <div className="campo-informe">
+                <label>Motivo / Reclamo</label>
+                <textarea
+                  rows="5"
+                  placeholder="Describí el motivo de la intervención..."
+                  value={datosInforme.reclamo_cliente}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      reclamo_cliente: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="campo-informe">
+                <label>Trabajo realizado</label>
+                <textarea
+                  rows="5"
+                  placeholder="Detallá los trabajos realizados..."
+                  value={datosInforme.trabajo_realizado}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      trabajo_realizado: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* TERCERA FILA */}
+            <div className="informe-grid informe-grid-4">
+              <div className="campo-informe">
+                <label>Mecánico</label>
+                <input
+                  type="text"
+                  placeholder="Nombre del mecánico"
+                  value={datosInforme.mecanico}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      mecanico: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="campo-informe">
+                <label>Hora de inicio</label>
+                <input
+                  type="time"
+                  value={datosInforme.hora_inicio}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      hora_inicio: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="campo-informe">
+                <label>Hora de finalización</label>
+                <input
+                  type="time"
+                  value={datosInforme.hora_fin}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      hora_fin: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="campo-informe">
+                <label>Estado final</label>
+
+                <select
+                  value={datosInforme.estado_final}
+                  onChange={(e) =>
+                    setDatosInforme({
+                      ...datosInforme,
+                      estado_final: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Seleccionar</option>
+                  <option value="Operativo">Operativo</option>
+                  <option value="Operativo con observaciones">
+                    Operativo con observaciones
+                  </option>
+                  <option value="Fuera de servicio">Fuera de servicio</option>
+                </select>
+              </div>
+            </div>
+
+            {/* OBSERVACIONES */}
+            <div className="campo-informe observaciones-informe">
+              <label>Observaciones</label>
+
+              <textarea
+                rows="4"
+                placeholder="Observaciones adicionales..."
+                value={datosInforme.observaciones}
+                onChange={(e) =>
+                  setDatosInforme({
+                    ...datosInforme,
+                    observaciones: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            {/* ACCIONES */}
+            <div className="acciones-informe">
+              <button
+                type="button"
+                className="btn-guardar-informe"
+                onClick={guardarInformeTecnico}
+              >
+                Guardar Orden de Trabajo
+              </button>
+            </div>
+          </div>
+        )}
         {modulo === "historial-equipos" && (
           <main className="panel panel-tabla">
             <h2>Historial de Máquinas</h2>
