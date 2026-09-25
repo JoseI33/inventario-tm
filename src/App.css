@@ -1337,3 +1337,184 @@ header p {
     grid-template-columns: 1fr;
   }
 }
+
+.resumen-mano-obra {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-bottom: 22px;
+  padding: 10px 14px;
+
+  background: #f4f7fb;
+  border: 1px solid #e2e6ec;
+  border-radius: 7px;
+
+  font-size: 14px;
+  color: #667085;
+}
+
+.resumen-mano-obra strong {
+  color: #17233c;
+}
+
+.campo-numero-ot {
+  max-width: 420px;
+  margin-bottom: 22px;
+}
+
+.campo-numero-ot small {
+  margin-top: 6px;
+  color: #7a8494;
+  font-size: 12px;
+}
+
+/* REPUESTOS DEL INFORME */
+
+.repuestos-informe {
+  margin: 25px 0;
+  padding: 20px;
+
+  background: #f8fafc;
+  border: 1px solid #e2e6ec;
+  border-radius: 8px;
+}
+
+.repuestos-header h4 {
+  margin: 0;
+  color: #17233c;
+  font-size: 17px;
+}
+
+.repuestos-header p {
+  margin: 5px 0 15px;
+  color: #7a8494;
+  font-size: 13px;
+}
+
+.buscador-repuestos {
+  position: relative;
+}
+
+.buscador-repuestos > input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+
+  border: 1px solid #ccd3dd;
+  border-radius: 6px;
+
+  font-size: 14px;
+}
+
+.resultados-repuestos {
+  position: absolute;
+  z-index: 20;
+
+  width: 100%;
+
+  background: white;
+  border: 1px solid #d8dde5;
+  border-radius: 6px;
+
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+
+  overflow: hidden;
+}
+
+.resultados-repuestos button {
+  display: flex;
+  gap: 15px;
+
+  width: 100%;
+  padding: 11px 12px;
+
+  border: none;
+  border-bottom: 1px solid #eeeeee;
+
+  background: white;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resultados-repuestos button:hover {
+  background: #f4f7fb;
+}
+
+.resultados-repuestos strong {
+  min-width: 110px;
+  color: #17233c;
+}
+
+.lista-repuestos {
+  margin-top: 18px;
+}
+
+.repuesto-item {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px 40px;
+  gap: 12px;
+  align-items: end;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid #e2e6ec;
+}
+
+.repuesto-descripcion {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.repuesto-descripcion strong {
+  color: #17233c;
+}
+
+.repuesto-descripcion span {
+  color: #667085;
+  font-size: 13px;
+}
+
+.repuesto-cantidad label,
+.repuesto-unidad label {
+  display: block;
+  margin-bottom: 5px;
+
+  color: #667085;
+  font-size: 12px;
+}
+
+.repuesto-cantidad input,
+.repuesto-unidad select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+
+  border: 1px solid #ccd3dd;
+  border-radius: 5px;
+}
+
+.btn-quitar-repuesto {
+  height: 36px;
+
+  border: none;
+  border-radius: 5px;
+
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.btn-quitar-repuesto:hover {
+  background: #fee2e2;
+}
+
+@media (max-width: 700px) {
+  .repuesto-item {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .repuesto-descripcion {
+    grid-column: 1 / -1;
+  }
+}

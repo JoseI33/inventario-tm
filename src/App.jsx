@@ -39,6 +39,19 @@ function App() {
   // INFORMES TECNICOS
   const [equipoInforme, setEquipoInforme] = useState(null);
   const [busquedaInternoInforme, setBusquedaInternoInforme] = useState("");
+  const [busquedaRepuesto, setBusquedaRepuesto] = useState("");
+  const [resultadosRepuestos, setResultadosRepuestos] = useState([]);
+  const [repuestosInforme, setRepuestosInforme] = useState([]);
+
+  // REPUESTOS MANUALES
+  const [mostrarRepuestoManual, setMostrarRepuestoManual] = useState(false);
+
+  const [repuestoManual, setRepuestoManual] = useState({
+    codigo: "",
+    descripcion: "",
+    cantidad: 1,
+    unidad: "UN",
+  });
 
   // UBICACIONES
   const [ubicaciones, setUbicaciones] = useState([]);
@@ -228,6 +241,7 @@ function App() {
   };
 
   const [datosInforme, setDatosInforme] = useState({
+    numero_ot: "",
     fecha: new Date().toISOString().split("T")[0],
     tipo_trabajo: "",
     horometro: "",
@@ -1204,6 +1218,10 @@ function App() {
           ubicacion_id: ubicacionInforme.id,
 
           movilidad_km: trasladoInforme?.distancia_total_km ?? null,
+
+          horas_mano_obra: horasManoObra,
+
+          repuestos: repuestosInforme,
         }),
       });
 
@@ -1221,6 +1239,119 @@ function App() {
 
       alert("No se pudo guardar el informe técnico.");
     }
+
+    // Limpiar equipo
+    setBusquedaInternoInforme("");
+    setEquipoInforme(null);
+
+    // Limpiar ubicación y traslado
+    setBusquedaUbicacion("");
+    setUbicacionInforme(null);
+    setTrasladoInforme(null);
+    setMostrarDetalleTraslado(false);
+
+    // Cerrar formulario de nueva ubicación
+    setMostrarNuevaUbicacion(false);
+
+    setNuevaUbicacion({
+      nombre: "",
+      latitud: null,
+      longitud: null,
+    });
+
+    // Limpiar datos de la OT
+    setDatosInforme({
+      numero_ot: "",
+      fecha: new Date().toISOString().split("T")[0],
+      tipo_trabajo: "",
+      horometro: "",
+      cliente: "",
+      contacto_cliente: "",
+      reclamo_cliente: "",
+      trabajo_realizado: "",
+      observaciones: "",
+      estado_final: "",
+      mecanico: "",
+      hora_inicio: "",
+      hora_fin: "",
+    });
+  };
+
+  const calcularHorasManoObra = () => {
+    if (!datosInforme.hora_inicio || !datosInforme.hora_fin) {
+      return null;
+    }
+
+    const [horaInicio, minutoInicio] = datosInforme.hora_inicio
+      .split(":")
+      .map(Number);
+
+    const [horaFin, minutoFin] = datosInforme.hora_fin.split(":").map(Number);
+
+    const inicio = horaInicio * 60 + minutoInicio;
+    const fin = horaFin * 60 + minutoFin;
+
+    if (fin < inicio) {
+      return null;
+    }
+
+    return (fin - inicio) / 60;
+  };
+
+  const horasManoObra = calcularHorasManoObra();
+
+  const buscarRepuestos = async (texto) => {
+    setBusquedaRepuesto(texto);
+
+    if (texto.trim().length < 2) {
+      setResultadosRepuestos([]);
+      return;
+    }
+
+    try {
+      const respuesta = await fetch(
+        `http://localhost:3000/componentes/buscar?q=${encodeURIComponent(
+          texto,
+        )}`,
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudieron buscar los repuestos");
+      }
+
+      const datos = await respuesta.json();
+
+      setResultadosRepuestos(datos);
+    } catch (error) {
+      console.error("Error buscando repuestos:", error);
+      setResultadosRepuestos([]);
+    }
+  };
+
+  const agregarRepuestoInforme = (componente) => {
+    const yaAgregado = repuestosInforme.some(
+      (item) => item.componente_id === componente.id,
+    );
+
+    if (yaAgregado) {
+      alert("Ese repuesto ya fue agregado.");
+      return;
+    }
+
+    setRepuestosInforme((anteriores) => [
+      ...anteriores,
+      {
+        componente_id: componente.id,
+        codigo: componente.codigo || "",
+        descripcion: componente.nombre,
+        cantidad: 1,
+        unidad: "UN",
+        observaciones: "",
+      },
+    ]);
+
+    setBusquedaRepuesto("");
+    setResultadosRepuestos([]);
   };
 
   return (
@@ -2109,6 +2240,24 @@ function App() {
               </div>
             </div>
 
+            <div className="campo-informe campo-numero-ot">
+              <label>N.º Orden de Trabajo</label>
+
+              <input
+                type="text"
+                placeholder="Ej: 15482 — dejar vacío para generar automáticamente"
+                value={datosInforme.numero_ot}
+                onChange={(e) =>
+                  setDatosInforme({
+                    ...datosInforme,
+                    numero_ot: e.target.value,
+                  })
+                }
+              />
+
+              <small>Si existe una OT física, ingresá el mismo número.</small>
+            </div>
+
             {/* PRIMERA FILA */}
             <div className="informe-grid informe-grid-5">
               <div className="campo-informe">
@@ -2228,6 +2377,224 @@ function App() {
               </div>
             </div>
 
+            <div className="repuestos-informe">
+              <div className="repuestos-header">
+                <div>
+                  <h4>Repuestos / materiales utilizados</h4>
+                  <p>Buscá por código o descripción.</p>
+                </div>
+              </div>
+
+              <div className="buscador-repuestos">
+                <input
+                  type="text"
+                  placeholder="Ej: H2015, filtro de aceite..."
+                  value={busquedaRepuesto}
+                  onChange={(e) => buscarRepuestos(e.target.value)}
+                />
+
+                {resultadosRepuestos.length > 0 && (
+                  <div className="resultados-repuestos">
+                    {resultadosRepuestos.map((componente) => (
+                      <button
+                        type="button"
+                        key={componente.id}
+                        onClick={() => agregarRepuestoInforme(componente)}
+                      >
+                        <strong>{componente.codigo || "Sin código"}</strong>
+
+                        <span>{componente.nombre}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="btn-repuesto-manual"
+                onClick={() => setMostrarRepuestoManual(!mostrarRepuestoManual)}
+              >
+                {mostrarRepuestoManual
+                  ? "Cancelar repuesto manual"
+                  : "+ Agregar repuesto/material manual"}
+              </button>
+
+              {mostrarRepuestoManual && (
+                <div className="form-repuesto-manual">
+                  <div>
+                    <label>Código</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 30207"
+                      value={repuestoManual.codigo}
+                      onChange={(e) =>
+                        setRepuestoManual({
+                          ...repuestoManual,
+                          codigo: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label>Descripción</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Rodamiento 35x72x15"
+                      value={repuestoManual.descripcion}
+                      onChange={(e) =>
+                        setRepuestoManual({
+                          ...repuestoManual,
+                          descripcion: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label>Cantidad</label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={repuestoManual.cantidad}
+                      onChange={(e) =>
+                        setRepuestoManual({
+                          ...repuestoManual,
+                          cantidad: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label>Unidad</label>
+                    <select
+                      value={repuestoManual.unidad}
+                      onChange={(e) =>
+                        setRepuestoManual({
+                          ...repuestoManual,
+                          unidad: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="UN">UN</option>
+                      <option value="L">Litros</option>
+                      <option value="KG">Kg</option>
+                      <option value="M">Metros</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!repuestoManual.descripcion.trim()) {
+                        alert("Ingresá una descripción para el repuesto.");
+                        return;
+                      }
+
+                      setRepuestosInforme((anteriores) => [
+                        ...anteriores,
+                        {
+                          componente_id: null,
+                          codigo: repuestoManual.codigo.trim(),
+                          descripcion: repuestoManual.descripcion.trim(),
+                          cantidad: repuestoManual.cantidad,
+                          unidad: repuestoManual.unidad,
+                          observaciones: "",
+                        },
+                      ]);
+
+                      setRepuestoManual({
+                        codigo: "",
+                        descripcion: "",
+                        cantidad: 1,
+                        unidad: "UN",
+                      });
+
+                      setMostrarRepuestoManual(false);
+                    }}
+                  >
+                    Agregar
+                  </button>
+                </div>
+              )}
+
+              {repuestosInforme.length > 0 && (
+                <div className="lista-repuestos">
+                  {repuestosInforme.map((repuesto, index) => (
+                    <div
+                      className="repuesto-item"
+                      key={`${repuesto.componente_id}-${index}`}
+                    >
+                      <div className="repuesto-descripcion">
+                        <strong>{repuesto.codigo || "Sin código"}</strong>
+
+                        <span>{repuesto.descripcion}</span>
+                      </div>
+
+                      <div className="repuesto-cantidad">
+                        <label>Cantidad</label>
+
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={repuesto.cantidad}
+                          onChange={(e) => {
+                            const nuevos = [...repuestosInforme];
+
+                            nuevos[index] = {
+                              ...nuevos[index],
+                              cantidad: e.target.value,
+                            };
+
+                            setRepuestosInforme(nuevos);
+                          }}
+                        />
+                      </div>
+
+                      <div className="repuesto-unidad">
+                        <label>Unidad</label>
+
+                        <select
+                          value={repuesto.unidad}
+                          onChange={(e) => {
+                            const nuevos = [...repuestosInforme];
+
+                            nuevos[index] = {
+                              ...nuevos[index],
+                              unidad: e.target.value,
+                            };
+
+                            setRepuestosInforme(nuevos);
+                          }}
+                        >
+                          <option value="UN">UN</option>
+                          <option value="L">Litros</option>
+                          <option value="KG">Kg</option>
+                          <option value="M">Metros</option>
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn-quitar-repuesto"
+                        onClick={() =>
+                          setRepuestosInforme(
+                            repuestosInforme.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* TERCERA FILA */}
             <div className="informe-grid informe-grid-4">
               <div className="campo-informe">
@@ -2294,6 +2661,18 @@ function App() {
                 </select>
               </div>
             </div>
+
+            {horasManoObra !== null && (
+              <div className="resumen-mano-obra">
+                <span>⏱ Tiempo de trabajo</span>
+
+                <strong>
+                  {Math.floor(horasManoObra)} h{" "}
+                  {Math.round((horasManoObra - Math.floor(horasManoObra)) * 60)}{" "}
+                  min
+                </strong>
+              </div>
+            )}
 
             {/* OBSERVACIONES */}
             <div className="campo-informe observaciones-informe">
@@ -2407,6 +2786,18 @@ function App() {
                   setFiltroTipoHistorial("");
                   setFiltroMotivoHistorial("");
                   setFiltroTipoContratoHistorial("");
+                  setRepuestosInforme([]);
+                  setBusquedaRepuesto("");
+                  setResultadosRepuestos([]);
+
+                  setMostrarRepuestoManual(false);
+
+                  setRepuestoManual({
+                    codigo: "",
+                    descripcion: "",
+                    cantidad: 1,
+                    unidad: "UN",
+                  });
                 }}
               >
                 Limpiar filtros

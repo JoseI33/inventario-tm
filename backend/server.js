@@ -989,51 +989,8 @@ app.post("/equipos/:interno/service-completo", async (req, res) => {
 
 app.post("/informes-tecnicos", async (req, res) => {
   const {
-  interno,
-  fecha,
-  tipo_trabajo,
-  horometro,
-  cliente,
-  contacto_cliente,
-  reclamo_cliente,
-  trabajo_realizado,
-  observaciones,
-  estado_final,
-  mecanico,
-  hora_inicio,
-  hora_fin,
-  horas_mano_obra,
-  movilidad_km,
-  ubicacion_id,
-} = req.body;
-
-  try {
-    // Buscar el equipo por interno
-    const equipo = await pool.query(
-      `
-      SELECT id
-      FROM equipos
-      WHERE interno = $1
-      `,
-      [interno]
-    );
-
-    if (equipo.rows.length === 0) {
-      return res.status(404).json({
-        error: "Equipo no encontrado",
-      });
-    }
-
-    const equipoId = equipo.rows[0].id;
-
-    // Generar número de OT
-    const numeroOT = `OT-${Date.now()}`;
-
-    const resultado = await pool.query(
-  `
-  INSERT INTO informes_tecnicos (
+    interno,
     numero_ot,
-    equipo_id,
     fecha,
     tipo_trabajo,
     horometro,
@@ -1048,63 +1005,154 @@ app.post("/informes-tecnicos", async (req, res) => {
     hora_fin,
     horas_mano_obra,
     movilidad_km,
-    ubicacion_id
-  )
-  VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12,
-    $13,
-    $14,
-    $15,
-    $16,
-    $17
-  )
-  RETURNING *
-  `,
-  [
-    numeroOT,                              // $1
-    equipoId,                              // $2
-    fecha,                                 // $3
-    tipo_trabajo,                          // $4
-    horometro ? Number(horometro) : null,  // $5
-    cliente || null,                       // $6
-    contacto_cliente || null,              // $7
-    reclamo_cliente || null,               // $8
-    trabajo_realizado || null,             // $9
-    observaciones || null,                 // $10
-    estado_final || null,                  // $11
-    mecanico || null,                      // $12
-    hora_inicio || null,                   // $13
-    hora_fin || null,                      // $14
-    horas_mano_obra
-      ? Number(horas_mano_obra)
-      : null,                              // $15
-    movilidad_km
-      ? Number(movilidad_km)
-      : null,                              // $16
-    ubicacion_id || null,                  // $17
-  ]
-);
+    ubicacion_id,
+    repuestos = [],
+  } = req.body;
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Buscar equipo
+    const equipo = await client.query(
+      `
+      SELECT id
+      FROM equipos
+      WHERE interno = $1
+      `,
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Equipo no encontrado",
+      });
+    }
+
+    const equipoId = equipo.rows[0].id;
+
+    // Usar OT física si fue ingresada.
+    // Si está vacía, generar una automáticamente.
+    const numeroOT =
+      numero_ot && numero_ot.trim()
+        ? numero_ot.trim()
+        : `OT-${Date.now()}`;
+
+    // Guardar informe
+    const resultado = await client.query(
+      `
+      INSERT INTO informes_tecnicos (
+        numero_ot,
+        equipo_id,
+        fecha,
+        tipo_trabajo,
+        horometro,
+        cliente,
+        contacto_cliente,
+        reclamo_cliente,
+        trabajo_realizado,
+        observaciones,
+        estado_final,
+        mecanico,
+        hora_inicio,
+        hora_fin,
+        horas_mano_obra,
+        movilidad_km,
+        ubicacion_id
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6,
+        $7, $8, $9, $10, $11,
+        $12, $13, $14, $15,
+        $16, $17
+      )
+      RETURNING *
+      `,
+      [
+        numeroOT,
+        equipoId,
+        fecha,
+        tipo_trabajo,
+        horometro ? Number(horometro) : null,
+        cliente || null,
+        contacto_cliente || null,
+        reclamo_cliente || null,
+        trabajo_realizado || null,
+        observaciones || null,
+        estado_final || null,
+        mecanico || null,
+        hora_inicio || null,
+        hora_fin || null,
+        horas_mano_obra
+          ? Number(horas_mano_obra)
+          : null,
+        movilidad_km
+          ? Number(movilidad_km)
+          : null,
+        ubicacion_id || null,
+      ]
+    );
+
+    const informe = resultado.rows[0];
+
+    // Guardar repuestos/materiales utilizados
+    for (const repuesto of repuestos) {
+      if (!repuesto.descripcion?.trim()) {
+        continue;
+      }
+
+      await client.query(
+        `
+        INSERT INTO informe_repuestos (
+          informe_id,
+          componente_id,
+          codigo,
+          descripcion,
+          cantidad,
+          unidad,
+          observaciones
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7
+        )
+        `,
+        [
+          informe.id,
+          repuesto.componente_id || null,
+          repuesto.codigo?.trim() || null,
+          repuesto.descripcion.trim(),
+          repuesto.cantidad
+            ? Number(repuesto.cantidad)
+            : 1,
+          repuesto.unidad || "UN",
+          repuesto.observaciones?.trim() || null,
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
+
     res.status(201).json({
       mensaje: "Informe técnico creado correctamente",
-      informe: resultado.rows[0],
+      informe,
+      repuestos_guardados: repuestos.length,
     });
   } catch (error) {
-    console.error("Error al crear informe técnico:", error);
+    await client.query("ROLLBACK");
+
+    console.error(
+      "Error al crear informe técnico:",
+      error
+    );
 
     res.status(500).json({
       error: "Error al crear informe técnico",
     });
+  } finally {
+    client.release();
   }
 });
 
@@ -1763,6 +1811,78 @@ app.get("/distancia-traslado/:ubicacionId", async (req, res) => {
 
     res.status(500).json({
       error: "Error al calcular el traslado",
+    });
+  }
+});
+
+app.get("/componentes/buscar", async (req, res) => {
+  const { q } = req.query;
+
+  try {
+    if (!q || q.trim().length < 2) {
+      return res.json([]);
+    }
+
+    const busqueda = `%${q.trim()}%`;
+
+    const resultado = await pool.query(
+      `
+      SELECT
+        id,
+        nombre,
+        codigo
+      FROM componentes_mantenimiento
+      WHERE
+        nombre ILIKE $1
+        OR codigo ILIKE $1
+      ORDER BY nombre
+      LIMIT 10
+      `,
+      [busqueda]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error buscando componentes:", error);
+
+    res.status(500).json({
+      error: "Error al buscar componentes",
+    });
+  }
+});
+
+app.get("/componentes/buscar", async (req, res) => {
+  const { q } = req.query;
+
+  try {
+    if (!q || q.trim().length < 2) {
+      return res.json([]);
+    }
+
+    const busqueda = `%${q.trim()}%`;
+
+    const resultado = await pool.query(
+      `
+      SELECT
+        id,
+        nombre,
+        codigo
+      FROM componentes_mantenimiento
+      WHERE
+        nombre ILIKE $1
+        OR codigo ILIKE $1
+      ORDER BY nombre
+      LIMIT 10
+      `,
+      [busqueda]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error buscando componentes:", error);
+
+    res.status(500).json({
+      error: "Error al buscar componentes",
     });
   }
 });
