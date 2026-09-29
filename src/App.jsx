@@ -94,6 +94,33 @@ function App() {
   const [planMantenimiento, setPlanMantenimiento] = useState([]);
   const [historialHorometros, setHistorialHorometros] = useState([]);
 
+  // PENDIENTES
+  const [tipoPendienteVista, setTipoPendienteVista] = useState("CENTRAL");
+  const [pendientes, setPendientes] = useState([]);
+  const [cargandoPendientes, setCargandoPendientes] = useState(false);
+
+  const [mostrarNuevoPendiente, setMostrarNuevoPendiente] = useState(false);
+  const [busquedaInternoPendiente, setBusquedaInternoPendiente] = useState("");
+  const [equipoPendiente, setEquipoPendiente] = useState(null);
+  const [nuevoPendiente, setNuevoPendiente] = useState({
+    tipo: "CENTRAL",
+    fecha: new Date().toISOString().split("T")[0],
+    empresa: "",
+    informado_por: "",
+    descripcion: "",
+    prioridad: "NORMAL",
+    observaciones: "",
+  });
+
+  const [pendienteAFinalizar, setPendienteAFinalizar] = useState(null);
+  const [solucionPendiente, setSolucionPendiente] = useState("");
+
+  const [pendientesFinalizados, setPendientesFinalizados] = useState([]);
+  const [busquedaPendienteFinalizado, setBusquedaPendienteFinalizado] =
+    useState("");
+  const [cargandoFinalizados, setCargandoFinalizados] = useState(false);
+  const [pendienteDetalle, setPendienteDetalle] = useState(null);
+
   // HOROMETROS
   const [fechaHorometro, setFechaHorometro] = useState("");
   const [nuevoHorometro, setNuevoHorometro] = useState("");
@@ -1354,6 +1381,178 @@ function App() {
     setResultadosRepuestos([]);
   };
 
+  const cargarPendientes = async (tipo) => {
+    try {
+      setCargandoPendientes(true);
+
+      const respuesta = await fetch(
+        `http://localhost:3000/pendientes?tipo=${tipo}`,
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudieron cargar los pendientes");
+      }
+
+      const datos = await respuesta.json();
+
+      setPendientes(datos);
+    } catch (error) {
+      console.error("Error cargando pendientes:", error);
+      setPendientes([]);
+    } finally {
+      setCargandoPendientes(false);
+    }
+  };
+
+  const guardarPendiente = async () => {
+    if (!equipoPendiente) {
+      alert("Seleccioná un equipo.");
+      return;
+    }
+
+    if (!nuevoPendiente.descripcion.trim()) {
+      alert("Ingresá el trabajo pendiente.");
+      return;
+    }
+
+    try {
+      const respuesta = await fetch("http://localhost:3000/pendientes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interno: equipoPendiente.interno,
+          ...nuevoPendiente,
+        }),
+      });
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error || "No se pudo guardar el pendiente");
+      }
+
+      alert("Pendiente guardado correctamente");
+
+      // Recordamos qué tipo se creó
+      const tipoGuardado = nuevoPendiente.tipo;
+
+      // Limpiar formulario
+      setBusquedaInternoPendiente("");
+      setEquipoPendiente(null);
+
+      setNuevoPendiente({
+        tipo: "CENTRAL",
+        fecha: new Date().toISOString().split("T")[0],
+        empresa: "",
+        informado_por: "",
+        descripcion: "",
+        prioridad: "NORMAL",
+        observaciones: "",
+      });
+
+      setMostrarNuevoPendiente(false);
+
+      // Mostrar automáticamente la sección correspondiente
+      setTipoPendienteVista(tipoGuardado);
+      cargarPendientes(tipoGuardado);
+    } catch (error) {
+      console.error("Error guardando pendiente:", error);
+      alert(error.message);
+    }
+  };
+
+  const marcarPendienteEnProceso = async (id) => {
+    try {
+      const respuesta = await fetch(
+        `http://localhost:3000/pendientes/${id}/en-proceso`,
+        {
+          method: "PUT",
+        },
+      );
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error || "No se pudo actualizar el pendiente");
+      }
+
+      cargarPendientes(tipoPendienteVista);
+    } catch (error) {
+      console.error("Error actualizando pendiente:", error);
+      alert(error.message);
+    }
+  };
+
+  const finalizarPendiente = async () => {
+    if (!pendienteAFinalizar) {
+      return;
+    }
+
+    if (!solucionPendiente.trim()) {
+      alert("Ingresá la solución realizada.");
+      return;
+    }
+
+    try {
+      const respuesta = await fetch(
+        `http://localhost:3000/pendientes/${pendienteAFinalizar.id}/finalizar`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            solucion: solucionPendiente.trim(),
+          }),
+        },
+      );
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error || "No se pudo finalizar el pendiente");
+      }
+
+      setPendienteAFinalizar(null);
+      setSolucionPendiente("");
+
+      cargarPendientes(tipoPendienteVista);
+    } catch (error) {
+      console.error("Error finalizando pendiente:", error);
+      alert(error.message);
+    }
+  };
+
+  const cargarPendientesFinalizados = async (interno = "") => {
+    try {
+      setCargandoFinalizados(true);
+
+      let url = "http://localhost:3000/pendientes-finalizados";
+
+      if (interno.trim()) {
+        url += `?interno=${encodeURIComponent(interno.trim())}`;
+      }
+
+      const respuesta = await fetch(url);
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudieron cargar los pendientes finalizados");
+      }
+
+      const datos = await respuesta.json();
+
+      setPendientesFinalizados(datos);
+    } catch (error) {
+      console.error("Error cargando pendientes finalizados:", error);
+
+      setPendientesFinalizados([]);
+    } finally {
+      setCargandoFinalizados(false);
+    }
+  };
+
   return (
     <div className="app-layout">
       {/* ================================= */}
@@ -1422,6 +1621,15 @@ function App() {
             }}
           >
             🔧 Equipo / Mantenimiento
+          </button>
+
+          <button
+            className={`sidebar-item ${
+              modulo === "pendientes" ? "activo" : ""
+            }`}
+            onClick={() => setModulo("pendientes")}
+          >
+            📌 Pendientes
           </button>
 
           <button
@@ -1989,6 +2197,684 @@ function App() {
               <p>No hay equipos inactivos registrados.</p>
             )}
           </main>
+        )}
+
+        {modulo === "pendientes" && (
+          <section className="modulo-pendientes">
+            <div className="pendientes-header">
+              <div>
+                <h2>Pendientes</h2>
+                <p>Seguimiento de trabajos pendientes de equipos.</p>
+              </div>
+
+              <button
+                type="button"
+                className="btn-nuevo-pendiente"
+                onClick={() => {
+                  setMostrarNuevoPendiente(true);
+
+                  setNuevoPendiente((anterior) => ({
+                    ...anterior,
+                    tipo: tipoPendienteVista === "FINCA" ? "FINCA" : "CENTRAL",
+                  }));
+                }}
+              >
+                + Nuevo pendiente
+              </button>
+            </div>
+
+            {mostrarNuevoPendiente && (
+              <div className="nuevo-pendiente-card">
+                <div className="nuevo-pendiente-header">
+                  <div>
+                    <h3>Nuevo pendiente</h3>
+                    <p>Registrá un trabajo pendiente para un equipo.</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMostrarNuevoPendiente(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="nuevo-pendiente-grid">
+                  <div className="campo-pendiente">
+                    <label>Interno</label>
+
+                    <input
+                      type="text"
+                      placeholder="Ej: 129"
+                      value={busquedaInternoPendiente}
+                      onChange={(e) => {
+                        const valor = e.target.value;
+
+                        setBusquedaInternoPendiente(valor);
+
+                        const encontrado = equipos.find(
+                          (equipo) =>
+                            String(equipo.interno).toLowerCase() ===
+                            valor.trim().toLowerCase(),
+                        );
+
+                        setEquipoPendiente(encontrado || null);
+                      }}
+                    />
+                  </div>
+
+                  <div className="campo-pendiente">
+                    <label>Tipo</label>
+
+                    <select
+                      value={nuevoPendiente.tipo}
+                      onChange={(e) =>
+                        setNuevoPendiente({
+                          ...nuevoPendiente,
+                          tipo: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="CENTRAL">Central</option>
+
+                      <option value="FINCA">Finca</option>
+                    </select>
+                  </div>
+
+                  <div className="campo-pendiente">
+                    <label>Fecha</label>
+
+                    <input
+                      type="date"
+                      value={nuevoPendiente.fecha}
+                      onChange={(e) =>
+                        setNuevoPendiente({
+                          ...nuevoPendiente,
+                          fecha: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {equipoPendiente && (
+                  <div className="equipo-pendiente-seleccionado">
+                    <div>
+                      <span>Interno</span>
+                      <strong>{equipoPendiente.interno}</strong>
+                    </div>
+
+                    <div>
+                      <span>Equipo</span>
+                      <strong>{equipoPendiente.tipo || "-"}</strong>
+                    </div>
+
+                    <div>
+                      <span>Marca</span>
+                      <strong>{equipoPendiente.marca || "-"}</strong>
+                    </div>
+
+                    <div>
+                      <span>Modelo</span>
+                      <strong>{equipoPendiente.modelo || "-"}</strong>
+                    </div>
+                  </div>
+                )}
+
+                <div className="nuevo-pendiente-grid">
+                  <div className="campo-pendiente">
+                    <label>Empresa</label>
+
+                    <input
+                      type="text"
+                      placeholder="Ej: Nucete"
+                      value={nuevoPendiente.empresa}
+                      onChange={(e) =>
+                        setNuevoPendiente({
+                          ...nuevoPendiente,
+                          empresa: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="campo-pendiente">
+                    <label>Informado por</label>
+
+                    <input
+                      type="text"
+                      placeholder="Ej: Rodrigo Sotelo"
+                      value={nuevoPendiente.informado_por}
+                      onChange={(e) =>
+                        setNuevoPendiente({
+                          ...nuevoPendiente,
+                          informado_por: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="campo-pendiente">
+                    <label>Prioridad</label>
+
+                    <select
+                      value={nuevoPendiente.prioridad}
+                      onChange={(e) =>
+                        setNuevoPendiente({
+                          ...nuevoPendiente,
+                          prioridad: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="NORMAL">Normal</option>
+
+                      <option value="URGENTE">Urgente</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="campo-pendiente">
+                  <label>Trabajo pendiente</label>
+
+                  <textarea
+                    rows="3"
+                    placeholder="Ej: Reparar tren trasero por juego..."
+                    value={nuevoPendiente.descripcion}
+                    onChange={(e) =>
+                      setNuevoPendiente({
+                        ...nuevoPendiente,
+                        descripcion: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="campo-pendiente">
+                  <label>Observaciones</label>
+
+                  <textarea
+                    rows="2"
+                    placeholder="Observaciones adicionales..."
+                    value={nuevoPendiente.observaciones}
+                    onChange={(e) =>
+                      setNuevoPendiente({
+                        ...nuevoPendiente,
+                        observaciones: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="acciones-nuevo-pendiente">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarNuevoPendiente(false)}
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-guardar-pendiente"
+                    onClick={guardarPendiente}
+                  >
+                    Guardar pendiente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="pendientes-tabs">
+              <button
+                type="button"
+                className={tipoPendienteVista === "CENTRAL" ? "activo" : ""}
+                onClick={() => {
+                  setTipoPendienteVista("CENTRAL");
+                  cargarPendientes("CENTRAL");
+                }}
+              >
+                Central
+              </button>
+              {pendienteAFinalizar && (
+                <div className="modal-pendiente-overlay">
+                  <div className="modal-finalizar-pendiente">
+                    <div className="modal-finalizar-header">
+                      <div>
+                        <h3>Finalizar pendiente</h3>
+                        <p>
+                          Registrá la solución realizada antes de cerrar este
+                          trabajo.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="modal-cerrar"
+                        onClick={() => {
+                          setPendienteAFinalizar(null);
+                          setSolucionPendiente("");
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="modal-equipo-info">
+                      <div>
+                        <span>Interno</span>
+                        <strong>{pendienteAFinalizar.interno}</strong>
+                      </div>
+
+                      <div>
+                        <span>Equipo</span>
+                        <strong>{pendienteAFinalizar.equipo || "-"}</strong>
+                      </div>
+
+                      <div>
+                        <span>Empresa</span>
+                        <strong>{pendienteAFinalizar.empresa || "-"}</strong>
+                      </div>
+                    </div>
+
+                    <div className="modal-pendiente-original">
+                      <span>TRABAJO PENDIENTE</span>
+
+                      <p>{pendienteAFinalizar.descripcion}</p>
+                    </div>
+
+                    <div className="modal-solucion">
+                      <label>
+                        Solución realizada <strong>*</strong>
+                      </label>
+
+                      <textarea
+                        rows="5"
+                        autoFocus
+                        placeholder="Describí el trabajo realizado para solucionar el pendiente..."
+                        value={solucionPendiente}
+                        onChange={(e) => setSolucionPendiente(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="modal-finalizar-footer">
+                      <button
+                        type="button"
+                        className="btn-cancelar-finalizacion"
+                        onClick={() => {
+                          setPendienteAFinalizar(null);
+                          setSolucionPendiente("");
+                        }}
+                      >
+                        Cancelar
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-confirmar-finalizacion"
+                        onClick={finalizarPendiente}
+                      >
+                        ✓ Confirmar finalización
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              ;
+              <button
+                type="button"
+                className={tipoPendienteVista === "FINCA" ? "activo" : ""}
+                onClick={() => {
+                  setTipoPendienteVista("FINCA");
+                  cargarPendientes("FINCA");
+                }}
+              >
+                Fincas
+              </button>
+              <button
+                type="button"
+                className={tipoPendienteVista === "CONSULTA" ? "activo" : ""}
+                onClick={() => {
+                  setTipoPendienteVista("CONSULTA");
+                  cargarPendientesFinalizados(busquedaPendienteFinalizado);
+                }}
+              >
+                Consulta
+              </button>
+            </div>
+
+            {tipoPendienteVista !== "CONSULTA" && (
+              <div className="tabla-pendientes-container">
+                {cargandoPendientes ? (
+                  <p>Cargando pendientes...</p>
+                ) : pendientes.length === 0 ? (
+                  <div className="sin-pendientes">
+                    <span>✓</span>
+
+                    <strong>No hay pendientes activos</strong>
+
+                    <p>
+                      No existen trabajos pendientes para{" "}
+                      {tipoPendienteVista === "CENTRAL" ? "Central" : "Fincas"}.
+                    </p>
+                  </div>
+                ) : (
+                  <table className="tabla-pendientes">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Interno</th>
+                        <th>Equipo</th>
+                        <th>Empresa</th>
+                        <th>Informado por</th>
+                        <th>Pendiente</th>
+                        <th>Prioridad</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {pendientes.map((pendiente) => (
+                        <tr
+                          key={pendiente.id}
+                          className="fila-pendiente-historial"
+                          onClick={() => {
+                            console.log("Pendiente seleccionado:", pendiente);
+                            setPendienteDetalle(pendiente);
+                          }}
+                        >
+                          <td>
+                            {pendiente.fecha
+                              ? new Date(pendiente.fecha).toLocaleDateString(
+                                  "es-AR",
+                                  {
+                                    timeZone: "UTC",
+                                  },
+                                )
+                              : "-"}
+                          </td>
+
+                          <td>
+                            <strong>{pendiente.interno}</strong>
+                          </td>
+
+                          <td>{pendiente.equipo}</td>
+
+                          <td>{pendiente.empresa || "-"}</td>
+
+                          <td>{pendiente.informado_por || "-"}</td>
+
+                          <td>{pendiente.descripcion}</td>
+
+                          <td>{pendiente.prioridad}</td>
+
+                          <td>{pendiente.estado}</td>
+                          <td>
+                            <div className="acciones-pendiente">
+                              {pendiente.estado === "PENDIENTE" && (
+                                <button
+                                  type="button"
+                                  className="btn-en-proceso"
+                                  onClick={() =>
+                                    marcarPendienteEnProceso(pendiente.id)
+                                  }
+                                >
+                                  En proceso
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                className="btn-finalizar-pendiente"
+                                onClick={() => {
+                                  setPendienteAFinalizar(pendiente);
+                                  setSolucionPendiente("");
+                                }}
+                              >
+                                Finalizar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {tipoPendienteVista === "CONSULTA" && (
+              <div className="consulta-pendientes">
+                <div className="consulta-pendientes-header">
+                  <div>
+                    <h3>Historial de pendientes</h3>
+                    <p>
+                      Consultá los trabajos finalizados y las soluciones
+                      realizadas.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="buscador-historial-pendientes">
+                  <div>
+                    <label>Buscar por interno</label>
+
+                    <input
+                      type="text"
+                      placeholder="Ej: 129"
+                      value={busquedaPendienteFinalizado}
+                      onChange={(e) =>
+                        setBusquedaPendienteFinalizado(e.target.value)
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          cargarPendientesFinalizados(
+                            busquedaPendienteFinalizado,
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      cargarPendientesFinalizados(busquedaPendienteFinalizado)
+                    }
+                  >
+                    Buscar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-limpiar-consulta"
+                    onClick={() => {
+                      setBusquedaPendienteFinalizado("");
+                      cargarPendientesFinalizados("");
+                    }}
+                  >
+                    Mostrar todos
+                  </button>
+                </div>
+
+                {cargandoFinalizados ? (
+                  <p>Cargando historial...</p>
+                ) : pendientesFinalizados.length === 0 ? (
+                  <div className="sin-pendientes">
+                    <strong>No se encontraron antecedentes</strong>
+
+                    <p>
+                      No existen pendientes finalizados con los criterios
+                      ingresados.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="tabla-pendientes-container">
+                    <table className="tabla-pendientes">
+                      <thead>
+                        <tr>
+                          <th>Finalizado</th>
+                          <th>Interno</th>
+                          <th>Equipo</th>
+                          <th>Empresa</th>
+                          <th>Pendiente</th>
+                          <th>Solución</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {pendientesFinalizados.map((pendiente) => (
+                          <tr
+                            key={pendiente.id}
+                            className="fila-pendiente-historial"
+                            onClick={() => {
+                              setPendienteDetalle(pendiente);
+                            }}
+                            title="Ver detalle"
+                          >
+                            <td>
+                              {pendiente.fecha_finalizacion
+                                ? new Date(
+                                    pendiente.fecha_finalizacion,
+                                  ).toLocaleDateString("es-AR", {
+                                    timeZone: "UTC",
+                                  })
+                                : "-"}
+                            </td>
+
+                            <td>
+                              <strong>{pendiente.interno}</strong>
+                            </td>
+
+                            <td>{pendiente.equipo}</td>
+
+                            <td>{pendiente.empresa || "-"}</td>
+
+                            <td>{pendiente.descripcion}</td>
+
+                            <td>{pendiente.solucion || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            {pendienteDetalle && (
+              <div
+                className="modal-pendiente-overlay"
+                onClick={() => setPendienteDetalle(null)}
+              >
+                <div
+                  className="modal-detalle-pendiente"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="detalle-pendiente-header">
+                    <div>
+                      <span className="detalle-etiqueta">
+                        HISTORIAL DE PENDIENTE
+                      </span>
+
+                      <h3>Interno {pendienteDetalle.interno}</h3>
+
+                      <p>
+                        {pendienteDetalle.equipo || "-"} ·{" "}
+                        {pendienteDetalle.marca || "-"} ·{" "}
+                        {pendienteDetalle.modelo || "-"}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="modal-cerrar"
+                      onClick={() => setPendienteDetalle(null)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="detalle-pendiente-datos">
+                    <div>
+                      <span>Fecha informada</span>
+
+                      <strong>
+                        {pendienteDetalle.fecha
+                          ? new Date(pendienteDetalle.fecha).toLocaleDateString(
+                              "es-AR",
+                              { timeZone: "UTC" },
+                            )
+                          : "-"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Fecha finalización</span>
+
+                      <strong>
+                        {pendienteDetalle.fecha_finalizacion
+                          ? new Date(
+                              pendienteDetalle.fecha_finalizacion,
+                            ).toLocaleDateString("es-AR", { timeZone: "UTC" })
+                          : "-"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Tipo</span>
+                      <strong>{pendienteDetalle.tipo || "-"}</strong>
+                    </div>
+
+                    <div>
+                      <span>Prioridad</span>
+                      <strong>{pendienteDetalle.prioridad || "-"}</strong>
+                    </div>
+
+                    <div>
+                      <span>Empresa</span>
+                      <strong>{pendienteDetalle.empresa || "-"}</strong>
+                    </div>
+
+                    <div>
+                      <span>Informado por</span>
+                      <strong>{pendienteDetalle.informado_por || "-"}</strong>
+                    </div>
+                  </div>
+
+                  <div className="detalle-bloque detalle-problema">
+                    <span>TRABAJO PENDIENTE</span>
+
+                    <p>{pendienteDetalle.descripcion || "-"}</p>
+                  </div>
+
+                  <div className="detalle-bloque detalle-solucion">
+                    <span>SOLUCIÓN REALIZADA</span>
+
+                    <p>{pendienteDetalle.solucion || "-"}</p>
+                  </div>
+
+                  {pendienteDetalle.observaciones && (
+                    <div className="detalle-observaciones">
+                      <span>Observaciones</span>
+
+                      <p>{pendienteDetalle.observaciones}</p>
+                    </div>
+                  )}
+
+                  <div className="detalle-pendiente-footer">
+                    <span className="estado-finalizado">✓ FINALIZADO</span>
+
+                    <button
+                      type="button"
+                      onClick={() => setPendienteDetalle(null)}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
         )}
 
         {modulo === "informes-tecnicos" && (

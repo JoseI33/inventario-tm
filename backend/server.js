@@ -54,6 +54,8 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
   const { interno } = req.params;
   const { horometro, fecha } = req.body;
 
+  const client = await pool.connect();
+
   try {
     if (!horometro || !fecha) {
       return res.status(400).json({
@@ -61,16 +63,30 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
       });
     }
 
-    const equipoActual = await pool.query(
+    const nuevoHorometro = Number(horometro);
+
+    if (Number.isNaN(nuevoHorometro) || nuevoHorometro < 0) {
+      return res.status(400).json({
+        error: "El horómetro ingresado no es válido",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    // Buscar equipo
+    const equipoActual = await client.query(
       `
       SELECT id, horometro_actual
       FROM equipos
       WHERE interno = $1
+      FOR UPDATE
       `,
       [interno]
     );
 
     if (equipoActual.rows.length === 0) {
+      await client.query("ROLLBACK");
+
       return res.status(404).json({
         error: "Equipo no encontrado",
       });
@@ -78,13 +94,35 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
 
     const equipo = equipoActual.rows[0];
 
-    if (Number(horometro) < Number(equipo.horometro_actual)) {
-      return res.status(400).json({
-        error: "El nuevo horómetro no puede ser menor al actual",
-      });
+    // Buscar el último horómetro REAL registrado
+    const ultimoRegistro = await client.query(
+      `
+      SELECT horometro, fecha
+      FROM horometros
+      WHERE equipo_id = $1
+      ORDER BY fecha DESC, id DESC
+      LIMIT 1
+      `,
+      [equipo.id]
+    );
+
+    if (ultimoRegistro.rows.length > 0) {
+      const ultimoHorometro = Number(
+        ultimoRegistro.rows[0].horometro
+      );
+
+      if (nuevoHorometro < ultimoHorometro) {
+        await client.query("ROLLBACK");
+
+        return res.status(400).json({
+          error:
+            `El nuevo horómetro no puede ser menor al último registrado (${ultimoHorometro} hs)`,
+        });
+      }
     }
 
-    await pool.query(
+    // Guardar historial
+    await client.query(
       `
       INSERT INTO horometros (
         equipo_id,
@@ -93,26 +131,38 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
       )
       VALUES ($1, $2, $3)
       `,
-      [equipo.id, fecha, horometro]
+      [equipo.id, fecha, nuevoHorometro]
     );
 
-    const resultado = await pool.query(
+    // Actualizar horómetro actual del equipo
+    const resultado = await client.query(
       `
       UPDATE equipos
       SET horometro_actual = $1
-      WHERE interno = $2
+      WHERE id = $2
       RETURNING *
       `,
-      [horometro, interno]
+      [nuevoHorometro, equipo.id]
     );
 
+    await client.query("COMMIT");
+
     res.json(resultado.rows[0]);
+
   } catch (error) {
-    console.error(error);
+    await client.query("ROLLBACK");
+
+    console.error(
+      "Error al actualizar horómetro:",
+      error
+    );
 
     res.status(500).json({
       error: "Error al actualizar horómetro",
     });
+
+  } finally {
+    client.release();
   }
 });
 
@@ -143,6 +193,86 @@ app.put("/equipos/:interno/plan-mantenimiento", async (req, res) => {
 
     res.status(500).json({
       error: "Error al asignar plan de mantenimiento",
+    });
+  }
+});
+
+// MARCAR PENDIENTE COMO EN PROCESO
+app.put("/pendientes/:id/en-proceso", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      UPDATE pendientes
+      SET estado = 'EN PROCESO'
+      WHERE id = $1
+        AND estado <> 'FINALIZADO'
+      RETURNING *
+      `,
+      [id]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({
+        error: "Pendiente no encontrado o ya finalizado",
+      });
+    }
+
+    res.json({
+      mensaje: "Pendiente marcado como en proceso",
+      pendiente: resultado.rows[0],
+    });
+  } catch (error) {
+    console.error("Error actualizando pendiente:", error);
+
+    res.status(500).json({
+      error: "Error al actualizar pendiente",
+    });
+  }
+});
+
+// FINALIZAR PENDIENTE
+app.put("/pendientes/:id/finalizar", async (req, res) => {
+  const { id } = req.params;
+  const { solucion } = req.body;
+
+  try {
+    if (!solucion?.trim()) {
+      return res.status(400).json({
+        error: "Ingresá la solución realizada",
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      UPDATE pendientes
+      SET
+        estado = 'FINALIZADO',
+        fecha_finalizacion = CURRENT_DATE,
+        solucion = $1
+      WHERE id = $2
+        AND estado <> 'FINALIZADO'
+      RETURNING *
+      `,
+      [solucion.trim(), id]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({
+        error: "Pendiente no encontrado o ya finalizado",
+      });
+    }
+
+    res.json({
+      mensaje: "Pendiente finalizado correctamente",
+      pendiente: resultado.rows[0],
+    });
+  } catch (error) {
+    console.error("Error finalizando pendiente:", error);
+
+    res.status(500).json({
+      error: "Error al finalizar pendiente",
     });
   }
 });
@@ -1197,6 +1327,92 @@ app.post("/ubicaciones", async (req, res) => {
   }
 });
 
+app.post("/pendientes", async (req, res) => {
+  const {
+    interno,
+    tipo,
+    fecha,
+    empresa,
+    informado_por,
+    descripcion,
+    prioridad,
+    observaciones,
+  } = req.body;
+
+  try {
+    if (!interno || !tipo || !descripcion?.trim()) {
+      return res.status(400).json({
+        error: "Interno, tipo y descripción son obligatorios",
+      });
+    }
+
+    if (!["CENTRAL", "FINCA"].includes(tipo)) {
+      return res.status(400).json({
+        error: "Tipo de pendiente no válido",
+      });
+    }
+
+    // Buscar equipo
+    const equipo = await pool.query(
+      `
+      SELECT id
+      FROM equipos
+      WHERE interno = $1
+      `,
+      [interno]
+    );
+
+    if (equipo.rows.length === 0) {
+      return res.status(404).json({
+        error: "Equipo no encontrado",
+      });
+    }
+
+    const equipoId = equipo.rows[0].id;
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO pendientes (
+        equipo_id,
+        tipo,
+        fecha,
+        empresa,
+        informado_por,
+        descripcion,
+        prioridad,
+        estado,
+        observaciones
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, 'PENDIENTE', $8
+      )
+      RETURNING *
+      `,
+      [
+        equipoId,
+        tipo,
+        fecha || new Date().toISOString().split("T")[0],
+        empresa?.trim() || null,
+        informado_por?.trim() || null,
+        descripcion.trim(),
+        prioridad || "NORMAL",
+        observaciones?.trim() || null,
+      ]
+    );
+
+    res.status(201).json({
+      mensaje: "Pendiente creado correctamente",
+      pendiente: resultado.rows[0],
+    });
+  } catch (error) {
+    console.error("Error al crear pendiente:", error);
+
+    res.status(500).json({
+      error: "Error al crear pendiente",
+    });
+  }
+});
+
 app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
   const { interno } = req.params;
 
@@ -1883,6 +2099,149 @@ app.get("/componentes/buscar", async (req, res) => {
 
     res.status(500).json({
       error: "Error al buscar componentes",
+    });
+  }
+});
+
+app.get("/pendientes", async (req, res) => {
+  const { tipo } = req.query;
+
+  try {
+    const valores = [];
+    let filtroTipo = "";
+
+    if (tipo) {
+      valores.push(tipo);
+      filtroTipo = `AND p.tipo = $${valores.length}`;
+    }
+
+    const resultado = await pool.query(
+      `
+      SELECT
+        p.id,
+        p.fecha,
+        p.tipo,
+        p.empresa,
+        p.informado_por,
+        p.descripcion,
+        p.prioridad,
+        p.estado,
+        p.observaciones,
+
+        e.id AS equipo_id,
+        e.interno,
+        e.tipo AS equipo,
+        e.marca,
+        e.modelo
+
+      FROM pendientes p
+
+      INNER JOIN equipos e
+        ON e.id = p.equipo_id
+
+      WHERE p.estado <> 'FINALIZADO'
+      ${filtroTipo}
+
+      ORDER BY
+        CASE
+          WHEN p.prioridad = 'URGENTE' THEN 1
+          ELSE 2
+        END,
+        p.fecha DESC,
+        p.id DESC
+      `,
+      valores
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error consultando pendientes:", error);
+
+    res.status(500).json({
+      error: "Error al consultar pendientes",
+    });
+  }
+});
+
+app.get("/pendientes-finalizados", async (req, res) => {
+  const { interno, tipo, empresa } = req.query;
+
+  try {
+    const valores = [];
+    const filtros = [
+      "p.estado = 'FINALIZADO'"
+    ];
+
+    if (interno?.trim()) {
+      valores.push(interno.trim());
+      filtros.push(
+        `CAST(e.interno AS TEXT) ILIKE $${valores.length}`
+      );
+
+      valores[valores.length - 1] =
+        `%${interno.trim()}%`;
+    }
+
+    if (tipo?.trim()) {
+      valores.push(tipo.trim());
+      filtros.push(
+        `p.tipo = $${valores.length}`
+      );
+    }
+
+    if (empresa?.trim()) {
+      valores.push(`%${empresa.trim()}%`);
+      filtros.push(
+        `p.empresa ILIKE $${valores.length}`
+      );
+    }
+
+    const resultado = await pool.query(
+      `
+      SELECT
+        p.id,
+        p.fecha,
+        p.fecha_finalizacion,
+        p.tipo,
+        p.empresa,
+        p.informado_por,
+        p.descripcion,
+        p.prioridad,
+        p.estado,
+        p.solucion,
+        p.observaciones,
+
+        e.id AS equipo_id,
+        e.interno,
+        e.tipo AS equipo,
+        e.marca,
+        e.modelo
+
+      FROM pendientes p
+
+      INNER JOIN equipos e
+        ON e.id = p.equipo_id
+
+      WHERE ${filtros.join(" AND ")}
+
+      ORDER BY
+        p.fecha_finalizacion DESC,
+        p.id DESC
+      `,
+      valores
+    );
+
+    res.json(resultado.rows);
+
+  } catch (error) {
+    console.error(
+      "Error consultando pendientes finalizados:",
+      error
+    );
+
+    res.status(500).json({
+      error:
+        "Error al consultar pendientes finalizados",
     });
   }
 });
