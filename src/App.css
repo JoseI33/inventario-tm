@@ -2307,3 +2307,1567 @@ header p {
   }
 
 }
+
+.antecedentes-equipo {
+  margin-bottom: 20px;
+  padding: 16px;
+
+  background: #ffffff;
+  border: 1px solid #dfe4ea;
+  border-radius: 8px;
+}
+
+.antecedentes-equipo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 12px;
+}
+
+.antecedentes-equipo-header > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.antecedentes-equipo-header > div > span {
+  color: #7a8494;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.antecedentes-equipo-header strong {
+  margin-top: 3px;
+  color: #17233c;
+}
+
+.cantidad-antecedentes {
+  padding: 5px 9px;
+
+  background: #eef2f7;
+  border-radius: 20px;
+
+  color: #475467;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sin-antecedentes-equipo {
+  padding: 12px;
+
+  background: #eef8f1;
+  border-radius: 6px;
+
+  color: #39784b;
+  font-size: 13px;
+}
+
+.cargando-antecedentes {
+  color: #667085;
+  font-size: 13px;
+}
+
+.ultimo-antecedente {
+  padding: 14px;
+
+  background: #f8f9fb;
+  border-radius: 7px;
+}
+
+.ultimo-antecedente-titulo {
+  display: flex;
+  justify-content: space-between;
+
+  margin-bottom: 12px;
+}
+
+.ultimo-antecedente-titulo span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ultimo-antecedente-titulo strong {
+  color: #344054;
+  font-size: 12px;
+}
+
+.antecedente-problema,
+.antecedente-solucion {
+  margin-top: 10px;
+}
+
+.antecedente-problema span,
+.antecedente-solucion span {
+  display: block;
+
+  margin-bottom: 3px;
+
+  color: #8a94a6;
+  font-size: 10px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+}
+
+.antecedente-problema p,
+.antecedente-solucion p {
+  margin: 0;
+
+  color: #344054;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* ================================= */
+/* DASHBOARD EQUIPO / MANTENIMIENTO  */
+/* ================================= */
+
+.ficha-mantenimiento-dashboard {
+  overflow: hidden;
+}
+
+.equipo-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 20px;
+  padding: 22px 24px;
+
+  background: #17233c;
+  border-radius: 12px;
+}
+
+.equipo-dashboard-identidad {
+  display: flex;
+  flex-direction: column;
+}
+
+.equipo-dashboard-etiqueta {
+  margin-bottom: 4px;
+
+  color: #aeb8c9;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.equipo-dashboard-identidad h2 {
+  margin: 0;
+
+  color: white;
+  font-size: 25px;
+}
+
+.equipo-dashboard-identidad p {
+  margin: 5px 0 0;
+
+  color: #cbd2dc;
+  font-size: 14px;
+}
+
+
+/* HORÓMETRO */
+
+.equipo-dashboard-horometro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.equipo-dashboard-horometro span {
+  margin-bottom: 4px;
+
+  color: #aeb8c9;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.equipo-dashboard-horometro strong {
+  color: white;
+  font-size: 27px;
+}
+
+.equipo-dashboard-horometro small {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+/* TARJETAS RESUMEN */
+
+.equipo-dashboard-resumen {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+
+  margin-bottom: 24px;
+}
+
+.resumen-mantenimiento-card {
+  min-height: 80px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: 15px 17px;
+
+  background: white;
+
+  border: 1px solid #e1e5eb;
+  border-radius: 9px;
+
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.resumen-mantenimiento-card > span {
+  margin-bottom: 6px;
+
+  color: #7a8494;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  text-transform: uppercase;
+}
+
+.resumen-mantenimiento-card > strong {
+  color: #17233c;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+
+@media (max-width: 900px) {
+
+  .equipo-dashboard-resumen {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+}
+
+
+@media (max-width: 600px) {
+
+  .equipo-dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .equipo-dashboard-horometro {
+    align-items: flex-start;
+  }
+
+  .equipo-dashboard-resumen {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+/* ================================= */
+/* HOROMETRO DASHBOARD               */
+/* ================================= */
+
+.horometro-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+
+  margin-bottom: 22px;
+}
+
+.dashboard-panel {
+  padding: 20px;
+
+  background: #ffffff;
+
+  border: 1px solid #e1e5eb;
+  border-radius: 10px;
+
+  box-shadow:
+    0 2px 7px rgba(0, 0, 0, 0.04);
+}
+
+.dashboard-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  margin-bottom: 18px;
+}
+
+.dashboard-panel-header h3 {
+  margin: 2px 0 0;
+
+  color: #17233c;
+  font-size: 16px;
+}
+
+.dashboard-panel-etiqueta {
+  color: #8a94a6;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 0.8px;
+}
+
+.dashboard-panel-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  width: 36px;
+  height: 36px;
+
+  background: #f2f5f9;
+  border-radius: 8px;
+
+  font-size: 18px;
+}
+
+.dashboard-panel-contador {
+  min-width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eef2f7;
+  border-radius: 20px;
+
+  color: #475467;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+/* FORMULARIO */
+
+.horometro-form-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  margin-bottom: 14px;
+}
+
+.campo-dashboard {
+  display: flex;
+  flex-direction: column;
+}
+
+.campo-dashboard label {
+  margin-bottom: 6px;
+
+  color: #667085;
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.campo-dashboard input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 10px;
+
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+
+  outline: none;
+}
+
+.campo-dashboard input:focus {
+  border-color: #667085;
+}
+
+.input-horas-dashboard {
+  position: relative;
+}
+
+.input-horas-dashboard input {
+  padding-right: 38px;
+}
+
+.input-horas-dashboard span {
+  position: absolute;
+
+  right: 11px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  color: #98a2b3;
+
+  font-size: 12px;
+}
+
+.btn-guardar-horometro-dashboard {
+  width: 100%;
+
+  padding: 10px;
+
+  background: #17233c;
+
+  border: none;
+  border-radius: 6px;
+
+  color: white;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.mensaje-horometro-dashboard {
+  margin-top: 10px;
+  padding: 9px;
+
+  background: #f2f5f9;
+  border-radius: 6px;
+
+  font-size: 12px;
+}
+
+
+/* HISTORIAL */
+
+.historial-dashboard {
+  display: flex;
+  flex-direction: column;
+}
+
+.historial-dashboard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 10px 0;
+
+  border-bottom: 1px solid #edf0f3;
+}
+
+.historial-dashboard-item:last-child {
+  border-bottom: none;
+}
+
+.historial-dashboard-fecha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.historial-punto {
+  width: 8px;
+  height: 8px;
+
+  flex-shrink: 0;
+
+  background: #cbd2dc;
+  border-radius: 50%;
+}
+
+.historial-punto.ultimo {
+  background: #17233c;
+}
+
+.historial-dashboard-fecha div {
+  display: flex;
+  flex-direction: column;
+}
+
+.historial-dashboard-fecha small {
+  color: #98a2b3;
+
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.historial-dashboard-fecha strong {
+  margin-top: 2px;
+
+  color: #475467;
+
+  font-size: 12px;
+}
+
+.historial-dashboard-horas {
+  color: #17233c;
+
+  font-size: 15px;
+}
+
+.historial-dashboard-horas small {
+  color: #667085;
+
+  font-size: 10px;
+}
+
+.dashboard-sin-datos {
+  padding: 25px 10px;
+
+  text-align: center;
+
+  color: #98a2b3;
+
+  font-size: 13px;
+}
+
+
+/* ================================= */
+/* PROYECCION SERVICE                */
+/* ================================= */
+
+.proyeccion-dashboard {
+  margin: 22px 0;
+  padding: 22px;
+
+  background: #f8fafc;
+
+  border: 1px solid #dfe5ec;
+  border-radius: 10px;
+}
+
+.proyeccion-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  margin-bottom: 20px;
+}
+
+.proyeccion-dashboard-header h3 {
+  margin: 3px 0 0;
+
+  color: #17233c;
+}
+
+.proyeccion-dashboard-header p {
+  margin: 4px 0 0;
+
+  color: #7a8494;
+
+  font-size: 12px;
+}
+
+.badge-estimado {
+  padding: 5px 9px;
+
+  background: #e8edf4;
+  border-radius: 20px;
+
+  color: #667085;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.proyeccion-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.proyeccion-dato {
+  padding: 14px;
+
+  background: white;
+
+  border: 1px solid #e4e7ec;
+  border-radius: 7px;
+}
+
+.proyeccion-dato span {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: #8a94a6;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  text-transform: uppercase;
+}
+
+.proyeccion-dato strong {
+  color: #17233c;
+
+  font-size: 17px;
+}
+
+.proyeccion-dato small {
+  color: #667085;
+
+  font-size: 10px;
+}
+
+.proyeccion-dashboard-footer {
+  display: flex;
+  gap: 35px;
+
+  margin-top: 16px;
+  padding-top: 15px;
+
+  border-top: 1px solid #dfe5ec;
+}
+
+.proyeccion-dashboard-footer div {
+  display: flex;
+  flex-direction: column;
+}
+
+.proyeccion-dashboard-footer span {
+  color: #8a94a6;
+  font-size: 10px;
+}
+
+.proyeccion-dashboard-footer strong {
+  margin-top: 3px;
+
+  color: #344054;
+  font-size: 13px;
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 850px) {
+
+  .horometro-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .proyeccion-dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+}
+
+@media (max-width: 550px) {
+
+  .horometro-form-dashboard,
+  .proyeccion-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .proyeccion-dashboard-footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+}
+
+/* ================================= */
+/* MANTENIMIENTO POR COMPONENTES     */
+/* ================================= */
+
+.componentes-dashboard {
+  margin: 22px 0;
+
+  background: #ffffff;
+
+  border: 1px solid #e1e5eb;
+  border-radius: 10px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 2px 7px rgba(0, 0, 0, 0.04);
+}
+
+.componentes-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  padding: 20px 22px;
+
+  background: #f8fafc;
+
+  border-bottom: 1px solid #e4e7ec;
+}
+
+.componentes-dashboard-header h3 {
+  margin: 3px 0 0;
+
+  color: #17233c;
+
+  font-size: 17px;
+}
+
+.componentes-dashboard-header p {
+  margin: 4px 0 0;
+
+  color: #7a8494;
+
+  font-size: 12px;
+}
+
+.componentes-contador {
+  min-width: 32px;
+  height: 32px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 0 5px;
+
+  background: #e9eef5;
+
+  border-radius: 20px;
+
+  color: #475467;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+/* COMPONENTE */
+
+.componentes-lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.componente-dashboard-item {
+  padding: 19px 22px;
+
+  border-bottom: 1px solid #edf0f3;
+}
+
+.componente-dashboard-item:last-child {
+  border-bottom: none;
+}
+
+.componente-dashboard-superior {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 16px;
+}
+
+.componente-identidad {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.componente-identidad h4 {
+  margin: 0;
+
+  color: #17233c;
+
+  font-size: 15px;
+}
+
+.componente-identidad span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #8a94a6;
+
+  font-size: 11px;
+}
+
+
+/* PUNTO DE ESTADO */
+
+.componente-indicador {
+  width: 10px;
+  height: 10px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+}
+
+.componente-indicador.estado-ok {
+  background: #4d9c63;
+}
+
+.componente-indicador.estado-próximo {
+  background: #e9a23b;
+}
+
+.componente-indicador.estado-vencido {
+  background: #c75b5b;
+}
+
+
+/* BADGE ESTADO */
+
+.componente-estado {
+  padding: 5px 9px;
+
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.componente-estado.mantenimiento-ok {
+  background: #eaf6ee;
+  color: #39784b;
+}
+
+.componente-estado.mantenimiento-próximo {
+  background: #fff5df;
+  color: #9a6700;
+}
+
+.componente-estado.mantenimiento-vencido {
+  background: #fcecec;
+  color: #a63f3f;
+}
+
+
+/* DATOS */
+
+.componente-datos {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(120px, 1fr));
+
+  gap: 15px;
+
+  margin-bottom: 15px;
+}
+
+.componente-datos div {
+  display: flex;
+  flex-direction: column;
+}
+
+.componente-datos span {
+  margin-bottom: 4px;
+
+  color: #98a2b3;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+}
+
+.componente-datos strong {
+  color: #475467;
+
+  font-size: 13px;
+}
+
+
+/* PROGRESO */
+
+.progreso-componente {
+  margin-top: 8px;
+}
+
+.progreso-componente-info {
+  display: flex;
+  justify-content: space-between;
+
+  margin-bottom: 6px;
+}
+
+.progreso-componente-info span {
+  color: #8a94a6;
+
+  font-size: 10px;
+}
+
+.progreso-componente-info strong {
+  color: #667085;
+
+  font-size: 10px;
+}
+
+.barra-progreso-componente {
+  width: 100%;
+  height: 7px;
+
+  background: #edf0f3;
+
+  border-radius: 10px;
+
+  overflow: hidden;
+}
+
+.barra-progreso-relleno {
+  height: 100%;
+
+  border-radius: 10px;
+
+  transition: width 0.3s ease;
+}
+
+.barra-progreso-relleno.progreso-ok {
+  background: #4d9c63;
+}
+
+.barra-progreso-relleno.progreso-próximo {
+  background: #e9a23b;
+}
+
+.barra-progreso-relleno.progreso-vencido {
+  background: #c75b5b;
+}
+
+
+/* OBSERVACIONES */
+
+.componente-observacion {
+  margin-top: 12px;
+  padding: 9px 11px;
+
+  background: #f8fafc;
+
+  border-radius: 6px;
+
+  color: #667085;
+
+  font-size: 11px;
+}
+
+.componente-observacion span {
+  font-weight: 700;
+}
+
+.componente-sin-historial {
+  padding: 12px;
+
+  background: #f8fafc;
+
+  border-radius: 6px;
+
+  color: #98a2b3;
+
+  font-size: 12px;
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 750px) {
+
+  .componente-datos {
+    grid-template-columns: 1fr 1fr;
+  }
+
+}
+
+@media (max-width: 500px) {
+
+  .componente-dashboard-superior {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .componente-datos {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+/* ================================= */
+/* SERVICE DE MOTOR DASHBOARD        */
+/* ================================= */
+
+.service-motor-dashboard {
+  margin: 22px 0;
+  padding: 22px;
+
+  background: #ffffff;
+
+  border: 1px solid #e1e5eb;
+  border-radius: 10px;
+
+  box-shadow:
+    0 2px 7px rgba(0, 0, 0, 0.04);
+}
+
+
+/* CABECERA */
+
+.service-motor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  margin-bottom: 22px;
+}
+
+.service-motor-header h3 {
+  margin: 3px 0 0;
+
+  color: #17233c;
+
+  font-size: 17px;
+}
+
+.service-motor-header p {
+  margin: 4px 0 0;
+
+  color: #7a8494;
+
+  font-size: 12px;
+}
+
+
+/* ESTADO */
+
+.service-motor-estado {
+  padding: 6px 11px;
+
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+}
+
+.service-motor-estado.ok {
+  background: #eaf6ee;
+  color: #39784b;
+}
+
+.service-motor-estado.próximo {
+  background: #fff5df;
+  color: #9a6700;
+}
+
+.service-motor-estado.vencido {
+  background: #fcecec;
+  color: #a63f3f;
+}
+
+
+/* DATOS */
+
+.service-motor-datos {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(120px, 1fr));
+
+  gap: 14px;
+
+  margin-bottom: 20px;
+}
+
+.service-motor-datos > div {
+  padding: 14px;
+
+  background: #f8fafc;
+
+  border: 1px solid #edf0f3;
+  border-radius: 7px;
+}
+
+.service-motor-datos span {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #8a94a6;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+}
+
+.service-motor-datos strong {
+  color: #17233c;
+
+  font-size: 17px;
+}
+
+.service-motor-datos small {
+  color: #667085;
+
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.service-motor-datos
+.service-valor-vencido {
+  color: #b54747;
+}
+
+
+/* BARRA DE PROGRESO */
+
+.service-progreso {
+  padding-top: 3px;
+}
+
+.service-progreso-info {
+  display: flex;
+  justify-content: space-between;
+
+  margin-bottom: 7px;
+}
+
+.service-progreso-info span {
+  color: #8a94a6;
+
+  font-size: 10px;
+}
+
+.service-progreso-info strong {
+  color: #667085;
+
+  font-size: 10px;
+}
+
+.service-barra {
+  width: 100%;
+  height: 8px;
+
+  background: #edf0f3;
+
+  border-radius: 20px;
+
+  overflow: hidden;
+}
+
+.service-barra-relleno {
+  height: 100%;
+
+  border-radius: 20px;
+
+  transition: width 0.3s ease;
+}
+
+.service-barra-relleno.ok {
+  background: #4d9c63;
+}
+
+.service-barra-relleno.próximo {
+  background: #e9a23b;
+}
+
+.service-barra-relleno.vencido {
+  background: #c75b5b;
+}
+
+
+/* SIN SERVICE */
+
+.service-sin-registro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 16px;
+
+  background: #f8fafc;
+
+  border-radius: 7px;
+}
+
+.service-sin-registro-icono {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  flex-shrink: 0;
+
+  background: #e9eef5;
+
+  border-radius: 50%;
+
+  color: #667085;
+
+  font-weight: 700;
+}
+
+.service-sin-registro strong {
+  color: #344054;
+
+  font-size: 13px;
+}
+
+.service-sin-registro p {
+  margin: 2px 0 0;
+
+  color: #8a94a6;
+
+  font-size: 11px;
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 800px) {
+
+  .service-motor-datos {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 500px) {
+
+  .service-motor-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .service-motor-datos {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+/* ================================= */
+/* PLAN DE MANTENIMIENTO DASHBOARD   */
+/* ================================= */
+
+.plan-dashboard {
+  margin: 22px 0;
+
+  background: #ffffff;
+
+  border: 1px solid #e1e5eb;
+  border-radius: 10px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 2px 7px rgba(0, 0, 0, 0.04);
+}
+
+
+/* HEADER */
+
+.plan-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 20px 22px;
+
+  background: #17233c;
+}
+
+.plan-dashboard-header
+.dashboard-panel-etiqueta {
+  color: #aeb8c9;
+}
+
+.plan-dashboard-header h3 {
+  margin: 3px 0 0;
+
+  color: #ffffff;
+
+  font-size: 17px;
+}
+
+.plan-dashboard-header p {
+  margin: 5px 0 0;
+
+  color: #cbd2dc;
+
+  font-size: 12px;
+}
+
+
+/* CONTADOR */
+
+.plan-dashboard-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.plan-dashboard-total strong {
+  color: #ffffff;
+
+  font-size: 24px;
+}
+
+.plan-dashboard-total span {
+  color: #aeb8c9;
+
+  font-size: 10px;
+
+  text-transform: uppercase;
+}
+
+
+/* CABECERA DE COLUMNAS */
+
+.plan-dashboard-titulos {
+  display: grid;
+
+  grid-template-columns:
+    minmax(230px, 2fr)
+    minmax(140px, 1fr)
+    minmax(100px, 0.7fr)
+    minmax(120px, 0.8fr);
+
+  gap: 15px;
+
+  padding: 10px 22px;
+
+  background: #f8fafc;
+
+  border-bottom: 1px solid #e4e7ec;
+
+  color: #8a94a6;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.4px;
+}
+
+
+/* FILAS */
+
+.plan-dashboard-lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-dashboard-item {
+  display: grid;
+
+  grid-template-columns:
+    minmax(230px, 2fr)
+    minmax(140px, 1fr)
+    minmax(100px, 0.7fr)
+    minmax(120px, 0.8fr);
+
+  gap: 15px;
+
+  align-items: center;
+
+  padding: 15px 22px;
+
+  border-bottom: 1px solid #edf0f3;
+
+  transition: background 0.15s ease;
+}
+
+.plan-dashboard-item:last-child {
+  border-bottom: none;
+}
+
+.plan-dashboard-item:hover {
+  background: #fafbfc;
+}
+
+
+/* COMPONENTE */
+
+.plan-componente {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+}
+
+.plan-componente-icono {
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  flex-shrink: 0;
+
+  background: #eaf6ee;
+
+  border-radius: 50%;
+
+  color: #39784b;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.plan-componente > div:last-child {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.plan-componente strong {
+  color: #344054;
+
+  font-size: 13px;
+}
+
+.plan-opcional {
+  margin-top: 3px;
+  padding: 2px 6px;
+
+  background: #fff5df;
+
+  border-radius: 10px;
+
+  color: #9a6700;
+
+  font-size: 8px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+}
+
+
+/* DATOS */
+
+.plan-dato {
+  display: flex;
+  align-items: baseline;
+
+  gap: 4px;
+}
+
+.plan-dato strong {
+  color: #475467;
+
+  font-size: 13px;
+}
+
+.plan-dato small {
+  color: #98a2b3;
+
+  font-size: 9px;
+}
+
+.plan-codigo {
+  padding: 4px 7px;
+
+  background: #f2f4f7;
+
+  border-radius: 4px;
+
+  color: #475467;
+
+  font-size: 11px;
+  font-family: monospace;
+}
+
+
+/* SIN PLAN */
+
+.plan-dashboard-vacio {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 22px;
+}
+
+.plan-vacio-icono {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  flex-shrink: 0;
+
+  background: #f2f4f7;
+
+  border-radius: 50%;
+
+  color: #667085;
+
+  font-weight: 700;
+}
+
+.plan-dashboard-vacio strong {
+  color: #344054;
+
+  font-size: 13px;
+}
+
+.plan-dashboard-vacio p {
+  margin: 3px 0 0;
+
+  color: #8a94a6;
+
+  font-size: 11px;
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 800px) {
+
+  .plan-dashboard-titulos {
+    display: none;
+  }
+
+  .plan-dashboard-item {
+    grid-template-columns: 1fr 1fr;
+
+    gap: 14px;
+  }
+
+  .plan-componente {
+    grid-column: 1 / -1;
+  }
+
+  .plan-dato {
+    flex-wrap: wrap;
+  }
+
+  .plan-dato::before {
+    content: attr(data-label);
+
+    width: 100%;
+
+    color: #98a2b3;
+
+    font-size: 8px;
+    font-weight: 700;
+
+    text-transform: uppercase;
+  }
+
+}
+
+@media (max-width: 500px) {
+
+  .plan-dashboard-header {
+    align-items: flex-start;
+  }
+
+  .plan-dashboard-item {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-componente {
+    grid-column: auto;
+  }
+
+}

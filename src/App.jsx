@@ -121,6 +121,10 @@ function App() {
   const [cargandoFinalizados, setCargandoFinalizados] = useState(false);
   const [pendienteDetalle, setPendienteDetalle] = useState(null);
 
+  const [antecedentesPendiente, setAntecedentesPendiente] = useState([]);
+
+  const [cargandoAntecedentes, setCargandoAntecedentes] = useState(false);
+
   // HOROMETROS
   const [fechaHorometro, setFechaHorometro] = useState("");
   const [nuevoHorometro, setNuevoHorometro] = useState("");
@@ -1553,6 +1557,50 @@ function App() {
     }
   };
 
+  const cargarAntecedentesPendiente = async (interno) => {
+    if (!interno) {
+      setAntecedentesPendiente([]);
+      return;
+    }
+
+    try {
+      setCargandoAntecedentes(true);
+
+      const respuesta = await fetch(
+        `http://localhost:3000/pendientes-finalizados?interno=${encodeURIComponent(
+          interno,
+        )}`,
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudieron consultar los antecedentes");
+      }
+
+      const datos = await respuesta.json();
+
+      setAntecedentesPendiente(datos);
+    } catch (error) {
+      console.error("Error consultando antecedentes:", error);
+
+      setAntecedentesPendiente([]);
+    } finally {
+      setCargandoAntecedentes(false);
+    }
+  };
+
+  const calcularProgresoMantenimiento = (horasUsadas, frecuencia) => {
+    const usadas = Number(horasUsadas) || 0;
+    const limite = Number(frecuencia) || 0;
+
+    if (limite <= 0) {
+      return 0;
+    }
+
+    const porcentaje = (usadas / limite) * 100;
+
+    return Math.min(Math.max(porcentaje, 0), 100);
+  };
+
   return (
     <div className="app-layout">
       {/* ================================= */}
@@ -2259,6 +2307,12 @@ function App() {
                         );
 
                         setEquipoPendiente(encontrado || null);
+
+                        if (encontrado) {
+                          cargarAntecedentesPendiente(encontrado.interno);
+                        } else {
+                          setAntecedentesPendiente([]);
+                        }
                       }}
                     />
                   </div>
@@ -2318,6 +2372,65 @@ function App() {
                       <span>Modelo</span>
                       <strong>{equipoPendiente.modelo || "-"}</strong>
                     </div>
+                  </div>
+                )}
+
+                {equipoPendiente && (
+                  <div className="antecedentes-equipo">
+                    <div className="antecedentes-equipo-header">
+                      <div>
+                        <span>ANTECEDENTES DEL EQUIPO</span>
+
+                        <strong>Interno {equipoPendiente.interno}</strong>
+                      </div>
+
+                      {antecedentesPendiente.length > 0 && (
+                        <span className="cantidad-antecedentes">
+                          {antecedentesPendiente.length}{" "}
+                          {antecedentesPendiente.length === 1
+                            ? "antecedente"
+                            : "antecedentes"}
+                        </span>
+                      )}
+                    </div>
+
+                    {cargandoAntecedentes ? (
+                      <p className="cargando-antecedentes">
+                        Consultando antecedentes...
+                      </p>
+                    ) : antecedentesPendiente.length === 0 ? (
+                      <div className="sin-antecedentes-equipo">
+                        ✓ No registra pendientes finalizados anteriormente.
+                      </div>
+                    ) : (
+                      <div className="ultimo-antecedente">
+                        <div className="ultimo-antecedente-titulo">
+                          <span>Último antecedente</span>
+
+                          <strong>
+                            {antecedentesPendiente[0].fecha_finalizacion
+                              ? new Date(
+                                  antecedentesPendiente[0].fecha_finalizacion,
+                                ).toLocaleDateString("es-AR", {
+                                  timeZone: "UTC",
+                                })
+                              : "-"}
+                          </strong>
+                        </div>
+
+                        <div className="antecedente-problema">
+                          <span>Problema</span>
+
+                          <p>{antecedentesPendiente[0].descripcion}</p>
+                        </div>
+
+                        <div className="antecedente-solucion">
+                          <span>Solución</span>
+
+                          <p>{antecedentesPendiente[0].solucion || "-"}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -4497,334 +4610,852 @@ function App() {
             )}
 
             {equipoSeleccionado && (
-              <div className="ficha">
-                <h2>Interno {equipoSeleccionado.interno}</h2>
+              <div className="ficha ficha-mantenimiento-dashboard">
+                <div className="equipo-dashboard-header">
+                  <div className="equipo-dashboard-identidad">
+                    <span className="equipo-dashboard-etiqueta">
+                      EQUIPO SELECCIONADO
+                    </span>
 
-                <p>
-                  <strong>Equipo:</strong> {equipoSeleccionado.tipo}
-                </p>
+                    <h2>Interno {equipoSeleccionado.interno}</h2>
 
-                <p>
-                  <strong>Marca:</strong> {equipoSeleccionado.marca}
-                </p>
+                    <p>
+                      {equipoSeleccionado.tipo || "-"} ·{" "}
+                      {equipoSeleccionado.marca || "-"}
+                    </p>
+                  </div>
 
-                <p>
-                  <strong>Horómetro actual:</strong>{" "}
-                  {equipoSeleccionado.horometro_actual} hs
-                </p>
+                  <div className="equipo-dashboard-horometro">
+                    <span>HORÓMETRO ACTUAL</span>
 
-                <div className="actualizar-horometro">
-                  <h3>Actualizar horómetro</h3>
+                    <strong>
+                      {Number(
+                        equipoSeleccionado.horometro_actual || 0,
+                      ).toLocaleString("es-AR")}{" "}
+                      <small>hs</small>
+                    </strong>
+                  </div>
+                </div>
 
-                  <input
-                    type="date"
-                    value={fechaHorometro}
-                    onChange={(e) => setFechaHorometro(e.target.value)}
-                  />
+                <div className="equipo-dashboard-resumen">
+                  <div className="resumen-mantenimiento-card">
+                    <span>Último service</span>
 
-                  <input
-                    type="number"
-                    placeholder="Nuevo horómetro"
-                    value={nuevoHorometro}
-                    onChange={(e) => setNuevoHorometro(e.target.value)}
-                  />
+                    <strong>
+                      {ultimoService
+                        ? `${Number(ultimoService.horometro).toLocaleString(
+                            "es-AR",
+                          )} hs`
+                        : "Sin registro"}
+                    </strong>
+                  </div>
 
-                  <button onClick={actualizarHorometro}>
-                    Guardar horómetro
-                  </button>
+                  <div className="resumen-mantenimiento-card">
+                    <span>Próximo service</span>
 
-                  {mensajeHorometro && <p>{mensajeHorometro}</p>}
+                    <strong>
+                      {proximoService
+                        ? `${Number(proximoService).toLocaleString("es-AR")} hs`
+                        : "-"}
+                    </strong>
+                  </div>
+
+                  <div className="resumen-mantenimiento-card">
+                    <span>
+                      {horasRestantes < 0
+                        ? "Horas excedidas"
+                        : "Horas restantes"}
+                    </span>
+
+                    <strong>
+                      {ultimoService
+                        ? `${Math.abs(Number(horasRestantes)).toLocaleString(
+                            "es-AR",
+                          )} hs`
+                        : "-"}
+                    </strong>
+                  </div>
+
+                  <div className="resumen-mantenimiento-card">
+                    <span>Estado</span>
+
+                    {ultimoService ? (
+                      <div
+                        className={`estado ${obtenerEstado().replaceAll(
+                          " ",
+                          "-",
+                        )}`}
+                      >
+                        {obtenerEstado()}
+                      </div>
+                    ) : (
+                      <strong>Sin registro</strong>
+                    )}
+                  </div>
+                </div>
+                <div className="horometro-dashboard-grid">
+                  {/* ACTUALIZAR HORÓMETRO */}
+                  <div className="dashboard-panel">
+                    <div className="dashboard-panel-header">
+                      <div>
+                        <span className="dashboard-panel-etiqueta">
+                          REGISTRO
+                        </span>
+
+                        <h3>Actualizar horómetro</h3>
+                      </div>
+
+                      <div className="dashboard-panel-icon">⏱</div>
+                    </div>
+
+                    <div className="horometro-form-dashboard">
+                      <div className="campo-dashboard">
+                        <label>Fecha de lectura</label>
+
+                        <input
+                          type="date"
+                          value={fechaHorometro}
+                          onChange={(e) => setFechaHorometro(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="campo-dashboard">
+                        <label>Nuevo horómetro</label>
+
+                        <div className="input-horas-dashboard">
+                          <input
+                            type="number"
+                            placeholder="Ej: 15480"
+                            value={nuevoHorometro}
+                            onChange={(e) => setNuevoHorometro(e.target.value)}
+                          />
+
+                          <span>hs</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-guardar-horometro-dashboard"
+                      onClick={actualizarHorometro}
+                    >
+                      Guardar horómetro
+                    </button>
+
+                    {mensajeHorometro && (
+                      <div className="mensaje-horometro-dashboard">
+                        {mensajeHorometro}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* HISTORIAL */}
+                  <div className="dashboard-panel">
+                    <div className="dashboard-panel-header">
+                      <div>
+                        <span className="dashboard-panel-etiqueta">
+                          LECTURAS
+                        </span>
+
+                        <h3>Historial de horómetros</h3>
+                      </div>
+
+                      <div className="dashboard-panel-contador">
+                        {historialHorometros.length}
+                      </div>
+                    </div>
+
+                    {historialHorometros.length > 0 ? (
+                      <div className="historial-dashboard">
+                        {historialHorometros
+                          .slice(0, 5)
+                          .map((registro, index) => (
+                            <div
+                              className="historial-dashboard-item"
+                              key={registro.id}
+                            >
+                              <div className="historial-dashboard-fecha">
+                                <span
+                                  className={
+                                    index === 0
+                                      ? "historial-punto ultimo"
+                                      : "historial-punto"
+                                  }
+                                ></span>
+
+                                <div>
+                                  <small>
+                                    {index === 0 ? "ÚLTIMA LECTURA" : "LECTURA"}
+                                  </small>
+
+                                  <strong>
+                                    {new Date(
+                                      registro.fecha,
+                                    ).toLocaleDateString("es-AR", {
+                                      timeZone: "UTC",
+                                    })}
+                                  </strong>
+                                </div>
+                              </div>
+
+                              <strong className="historial-dashboard-horas">
+                                {Number(registro.horometro).toLocaleString(
+                                  "es-AR",
+                                )}{" "}
+                                <small>hs</small>
+                              </strong>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="dashboard-sin-datos">
+                        No hay lecturas registradas.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="service-motor-dashboard">
+                  <div className="service-motor-header">
+                    <div>
+                      <span className="dashboard-panel-etiqueta">
+                        SERVICE PRINCIPAL
+                      </span>
+
+                      <h3>Service de motor</h3>
+
+                      <p>Seguimiento según el horómetro real del equipo.</p>
+                    </div>
+
+                    {ultimoService && (
+                      <div
+                        className={`service-motor-estado ${obtenerEstado()
+                          .toLowerCase()
+                          .replaceAll(" ", "-")}`}
+                      >
+                        {obtenerEstado() === "OK" && "✓ "}
+                        {obtenerEstado() === "Próximo" && "⚠ "}
+                        {obtenerEstado() === "Vencido" && "✕ "}
+
+                        {obtenerEstado()}
+                      </div>
+                    )}
+                  </div>
+
+                  {ultimoService ? (
+                    <>
+                      <div className="service-motor-datos">
+                        <div>
+                          <span>Último service</span>
+
+                          <strong>
+                            {Number(ultimoService.horometro).toLocaleString(
+                              "es-AR",
+                            )}
+                            <small> hs</small>
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>Horas utilizadas</span>
+
+                          <strong>
+                            {Number(horasUsadas).toLocaleString("es-AR")}
+                            <small> hs</small>
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>Próximo service</span>
+
+                          <strong>
+                            {Number(proximoService).toLocaleString("es-AR")}
+                            <small> hs</small>
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            {horasRestantes < 0
+                              ? "Horas excedidas"
+                              : "Horas restantes"}
+                          </span>
+
+                          <strong
+                            className={
+                              horasRestantes < 0 ? "service-valor-vencido" : ""
+                            }
+                          >
+                            {Math.abs(Number(horasRestantes)).toLocaleString(
+                              "es-AR",
+                            )}
+                            <small> hs</small>
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="service-progreso">
+                        <div className="service-progreso-info">
+                          <span>Avance hacia el próximo service</span>
+
+                          <strong>
+                            {Number(horasUsadas).toLocaleString("es-AR")}
+                            {" / "}
+                            {Number(
+                              equipoSeleccionado.frecuencia_service || 300,
+                            ).toLocaleString("es-AR")}
+                            {" hs"}
+                          </strong>
+                        </div>
+
+                        <div className="service-barra">
+                          <div
+                            className={`service-barra-relleno ${obtenerEstado()
+                              .toLowerCase()
+                              .replaceAll(" ", "-")}`}
+                            style={{
+                              width: `${Math.min(
+                                Math.max(
+                                  (Number(horasUsadas) /
+                                    Number(
+                                      equipoSeleccionado.frecuencia_service ||
+                                        300,
+                                    )) *
+                                    100,
+                                  0,
+                                ),
+                                100,
+                              )}%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="service-sin-registro">
+                      <div className="service-sin-registro-icono">!</div>
+
+                      <div>
+                        <strong>Sin service registrado</strong>
+
+                        <p>
+                          Este equipo todavía no posee un service de motor
+                          registrado.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <hr />
 
-                <h3>Historial de horómetros</h3>
-
-                {historialHorometros.length > 0 ? (
-                  <div className="historial-horometros">
-                    {historialHorometros.map((registro) => (
-                      <div className="registro-horometro" key={registro.id}>
-                        <strong>
-                          {new Date(registro.fecha).toLocaleDateString("es-AR")}
-                        </strong>
-
-                        <span>{registro.horometro} hs</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p>No hay lecturas registradas.</p>
-                )}
-
-                <h3>Service de motor</h3>
-
-                {ultimoService ? (
-                  <>
-                    <p>
-                      <strong>Último service:</strong> {ultimoService.horometro}{" "}
-                      hs
-                    </p>
-
-                    <p>
-                      <strong>Horas utilizadas:</strong> {horasUsadas} hs
-                    </p>
-
-                    <p>
-                      <strong>Próximo service:</strong> {proximoService} hs
-                    </p>
-
-                    <p>
-                      <strong>Horas restantes:</strong> {horasRestantes} hs
-                    </p>
-
-                    <div
-                      className={`estado ${obtenerEstado().replaceAll(" ", "-")}`}
-                    >
-                      {obtenerEstado()}
-                    </div>
-                  </>
-                ) : (
-                  <hr />
-                )}
-
-                <hr />
-
                 {proyeccionService && (
-                  <div className="proyeccion-service">
-                    <h3>Proyección de service</h3>
+                  <div className="proyeccion-dashboard">
+                    <div className="proyeccion-dashboard-header">
+                      <div>
+                        <span className="dashboard-panel-etiqueta">
+                          ESTIMACIÓN
+                        </span>
 
-                    <p>
-                      <strong>Promedio estimado:</strong>{" "}
-                      {proyeccionService.horasPromedioDia.toFixed(2)} hs/día
-                    </p>
+                        <h3>Proyección de service</h3>
 
-                    <p>
-                      <strong>Último horómetro registrado:</strong>{" "}
-                      {proyeccionService.ultimoHorometro} hs
-                    </p>
+                        <p>Calculada según el uso reciente del equipo.</p>
+                      </div>
 
-                    <p>
-                      <strong>Días desde última visita:</strong>{" "}
-                      {proyeccionService.diasDesdeUltimaVisita}
-                    </p>
+                      <span className="badge-estimado">Dato estimado</span>
+                    </div>
 
-                    <p>
-                      <strong>Horómetro estimado actual:</strong>{" "}
-                      {proyeccionService.horometroEstimado.toFixed(0)} hs
-                    </p>
+                    <div className="proyeccion-dashboard-grid">
+                      <div className="proyeccion-dato">
+                        <span>Promedio diario</span>
 
-                    <p>
-                      <strong>Horas estimadas restantes:</strong>{" "}
-                      {proyeccionService.horasRestantes.toFixed(0)} hs
-                    </p>
+                        <strong>
+                          {proyeccionService.horasPromedioDia.toFixed(2)}
+                          <small> hs/día</small>
+                        </strong>
+                      </div>
 
-                    {proyeccionService.diasRestantes !== null && (
-                      <p>
-                        <strong>Service estimado en:</strong>{" "}
-                        {Math.max(
-                          0,
-                          Math.ceil(proyeccionService.diasRestantes),
-                        )}{" "}
-                        días aproximadamente
-                      </p>
-                    )}
+                      <div className="proyeccion-dato">
+                        <span>Última lectura real</span>
+
+                        <strong>
+                          {Number(
+                            proyeccionService.ultimoHorometro,
+                          ).toLocaleString("es-AR")}
+                          <small> hs</small>
+                        </strong>
+                      </div>
+
+                      <div className="proyeccion-dato">
+                        <span>Estimado actual</span>
+
+                        <strong>
+                          {Number(
+                            proyeccionService.horometroEstimado.toFixed(0),
+                          ).toLocaleString("es-AR")}
+                          <small> hs</small>
+                        </strong>
+                      </div>
+
+                      <div className="proyeccion-dato">
+                        <span>Restante estimado</span>
+
+                        <strong>
+                          {Number(
+                            proyeccionService.horasRestantes.toFixed(0),
+                          ).toLocaleString("es-AR")}
+                          <small> hs</small>
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="proyeccion-dashboard-footer">
+                      <div>
+                        <span>Días desde última lectura</span>
+
+                        <strong>
+                          {proyeccionService.diasDesdeUltimaVisita} días
+                        </strong>
+                      </div>
+
+                      {proyeccionService.diasRestantes !== null && (
+                        <div>
+                          <span>Service estimado</span>
+
+                          <strong>
+                            ~{" "}
+                            {Math.max(
+                              0,
+                              Math.ceil(proyeccionService.diasRestantes),
+                            )}{" "}
+                            días
+                          </strong>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {filtrosEspecialesEstado.length > 0 && (
-                  <>
-                    <h3>Filtros especiales</h3>
+                  <div className="componentes-dashboard">
+                    <div className="componentes-dashboard-header">
+                      <div>
+                        <span className="dashboard-panel-etiqueta">
+                          SEGUIMIENTO
+                        </span>
 
-                    <div className="filtros-600-grid">
-                      {filtrosEspecialesEstado.map((item) => (
-                        <div
-                          className="mantenimiento-card"
-                          key={item.componente_id}
-                        >
-                          <h4>{item.componente}</h4>
+                        <h3>Filtros especiales</h3>
 
-                          {item.codigo && (
-                            <p>
-                              <strong>Código:</strong> {item.codigo}
-                            </p>
-                          )}
+                        <p>Componentes con mantenimiento independiente.</p>
+                      </div>
 
-                          <p>
-                            <strong>Frecuencia:</strong> {item.frecuencia_horas}{" "}
-                            hs
-                          </p>
+                      <span className="componentes-contador">
+                        {filtrosEspecialesEstado.length}
+                      </span>
+                    </div>
 
-                          {item.horometro_ultimo_cambio !== null ? (
-                            <>
-                              <p>
-                                <strong>Último cambio:</strong>{" "}
-                                {item.horometro_ultimo_cambio} hs
-                              </p>
+                    <div className="componentes-lista">
+                      {filtrosEspecialesEstado.map((item) => {
+                        const progreso = calcularProgresoMantenimiento(
+                          item.horas_usadas,
+                          item.frecuencia_horas,
+                        );
 
-                              <p>
-                                <strong>Fecha:</strong>{" "}
-                                {new Date(
-                                  item.fecha_ultimo_cambio,
-                                ).toLocaleDateString("es-AR")}
-                              </p>
+                        return (
+                          <div
+                            className="componente-dashboard-item"
+                            key={item.componente_id}
+                          >
+                            <div className="componente-dashboard-superior">
+                              <div className="componente-identidad">
+                                <div
+                                  className={`componente-indicador estado-${item.estado
+                                    .toLowerCase()
+                                    .replaceAll(" ", "-")}`}
+                                ></div>
 
-                              {item.observaciones && (
-                                <p>
-                                  <strong>Motivo por cambio:</strong>{" "}
-                                  {item.observaciones.replace(
-                                    "Cambio durante service: ",
-                                    "",
-                                  )}
-                                </p>
-                              )}
+                                <div>
+                                  <h4>{item.componente}</h4>
 
-                              <p>
-                                <strong>Horas usadas:</strong>{" "}
-                                {item.horas_usadas} hs
-                              </p>
-
-                              <p>
-                                <strong>Próximo cambio:</strong>{" "}
-                                {item.proximo_cambio} hs
-                              </p>
-
-                              <p>
-                                <strong>
-                                  {item.horas_restantes < 0
-                                    ? "Vencido por:"
-                                    : "Restante:"}
-                                </strong>{" "}
-                                {Math.abs(item.horas_restantes)} hs
-                              </p>
+                                  <span>
+                                    {item.codigo || "Sin código registrado"}
+                                  </span>
+                                </div>
+                              </div>
 
                               <div
-                                className={`estado mantenimiento-${item.estado
+                                className={`componente-estado mantenimiento-${item.estado
                                   .toLowerCase()
                                   .replaceAll(" ", "-")}`}
                               >
                                 {item.estado === "OK" && "✓ "}
                                 {item.estado === "Próximo" && "⚠ "}
                                 {item.estado === "Vencido" && "✕ "}
+
                                 {item.estado}
                               </div>
-                            </>
-                          ) : (
-                            <p>Sin historial registrado.</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                            </div>
 
-                {mantenimientos.length > 0 && (
-                  <h3>Mantenimientos programados</h3>
+                            {item.horometro_ultimo_cambio !== null ? (
+                              <>
+                                <div className="componente-datos">
+                                  <div>
+                                    <span>Último cambio</span>
+
+                                    <strong>
+                                      {Number(
+                                        item.horometro_ultimo_cambio,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span>Frecuencia</span>
+
+                                    <strong>
+                                      {Number(
+                                        item.frecuencia_horas,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span>Próximo cambio</span>
+
+                                    <strong>
+                                      {Number(
+                                        item.proximo_cambio,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span>
+                                      {item.horas_restantes < 0
+                                        ? "Excedido"
+                                        : "Restante"}
+                                    </span>
+
+                                    <strong>
+                                      {Math.abs(
+                                        Number(item.horas_restantes),
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+                                </div>
+
+                                <div className="progreso-componente">
+                                  <div className="progreso-componente-info">
+                                    <span>Uso desde último cambio</span>
+
+                                    <strong>
+                                      {Number(item.horas_usadas).toLocaleString(
+                                        "es-AR",
+                                      )}{" "}
+                                      /{" "}
+                                      {Number(
+                                        item.frecuencia_horas,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div className="barra-progreso-componente">
+                                    <div
+                                      className={`barra-progreso-relleno progreso-${item.estado
+                                        .toLowerCase()
+                                        .replaceAll(" ", "-")}`}
+                                      style={{
+                                        width: `${progreso}%`,
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+
+                                {item.observaciones && (
+                                  <div className="componente-observacion">
+                                    <span>Motivo último cambio:</span>{" "}
+                                    {item.observaciones.replace(
+                                      "Cambio durante service: ",
+                                      "",
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="componente-sin-historial">
+                                Sin historial registrado.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
 
                 {mantenimientos.length > 0 ? (
-                  <div className="mantenimientos-grid">
-                    {mantenimientos.map((item) => (
-                      <div
-                        className="mantenimiento-card"
-                        key={item.componente_id}
-                      >
-                        <h4>{item.componente}</h4>
+                  <div className="componentes-dashboard">
+                    <div className="componentes-dashboard-header">
+                      <div>
+                        <span className="dashboard-panel-etiqueta">
+                          MANTENIMIENTO
+                        </span>
 
-                        {item.codigo && (
-                          <p>
-                            <strong>Código:</strong> {item.codigo}
-                          </p>
-                        )}
+                        <h3>Mantenimientos programados</h3>
 
-                        {item.horometro_ultimo_mantenimiento !== null ? (
-                          <>
-                            <p>
-                              <strong>Último:</strong>{" "}
-                              {item.horometro_ultimo_mantenimiento} hs
-                            </p>
-
-                            <p>
-                              <strong>Fecha:</strong>{" "}
-                              {new Date(
-                                item.fecha_ultimo_mantenimiento,
-                              ).toLocaleDateString("es-AR")}
-                            </p>
-
-                            <p>
-                              <strong>Frecuencia:</strong>{" "}
-                              {item.frecuencia_horas} hs
-                            </p>
-
-                            <p>
-                              <strong>Horas usadas:</strong> {item.horas_usadas}{" "}
-                              hs
-                            </p>
-
-                            <p>
-                              <strong>Próximo:</strong>{" "}
-                              {item.proximo_mantenimiento} hs
-                            </p>
-
-                            <p>
-                              <strong>
-                                {item.horas_restantes < 0
-                                  ? "Vencido por:"
-                                  : "Restante:"}
-                              </strong>{" "}
-                              {Math.abs(item.horas_restantes)} hs
-                            </p>
-
-                            <div
-                              className={`estado mantenimiento-${item.estado
-                                .toLowerCase()
-                                .replaceAll(" ", "-")}`}
-                            >
-                              {item.estado === "OK" && "✓ "}
-                              {item.estado === "Próximo" && "⚠ "}
-                              {item.estado === "Vencido" && "✕ "}
-                              {item.estado}
-                            </div>
-                          </>
-                        ) : (
-                          <p>Sin historial registrado.</p>
-                        )}
+                        <p>
+                          Estado de los componentes según el horómetro actual.
+                        </p>
                       </div>
-                    ))}
+
+                      <span className="componentes-contador">
+                        {mantenimientos.length}
+                      </span>
+                    </div>
+
+                    <div className="componentes-lista">
+                      {mantenimientos.map((item) => {
+                        const progreso = calcularProgresoMantenimiento(
+                          item.horas_usadas,
+                          item.frecuencia_horas,
+                        );
+
+                        return (
+                          <div
+                            className="componente-dashboard-item"
+                            key={item.componente_id}
+                          >
+                            <div className="componente-dashboard-superior">
+                              <div className="componente-identidad">
+                                <div
+                                  className={`componente-indicador estado-${item.estado
+                                    .toLowerCase()
+                                    .replaceAll(" ", "-")}`}
+                                ></div>
+
+                                <div>
+                                  <h4>{item.componente}</h4>
+
+                                  <span>
+                                    {item.codigo || "Sin código registrado"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div
+                                className={`componente-estado mantenimiento-${item.estado
+                                  .toLowerCase()
+                                  .replaceAll(" ", "-")}`}
+                              >
+                                {item.estado === "OK" && "✓ "}
+                                {item.estado === "Próximo" && "⚠ "}
+                                {item.estado === "Vencido" && "✕ "}
+
+                                {item.estado}
+                              </div>
+                            </div>
+
+                            {item.horometro_ultimo_mantenimiento !== null ? (
+                              <>
+                                <div className="componente-datos">
+                                  <div>
+                                    <span>Último</span>
+
+                                    <strong>
+                                      {Number(
+                                        item.horometro_ultimo_mantenimiento,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span>Frecuencia</span>
+
+                                    <strong>
+                                      {Number(
+                                        item.frecuencia_horas,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span>Próximo</span>
+
+                                    <strong>
+                                      {Number(
+                                        item.proximo_mantenimiento,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span>
+                                      {item.horas_restantes < 0
+                                        ? "Excedido"
+                                        : "Restante"}
+                                    </span>
+
+                                    <strong>
+                                      {Math.abs(
+                                        Number(item.horas_restantes),
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+                                </div>
+
+                                <div className="progreso-componente">
+                                  <div className="progreso-componente-info">
+                                    <span>Uso desde último mantenimiento</span>
+
+                                    <strong>
+                                      {Number(item.horas_usadas).toLocaleString(
+                                        "es-AR",
+                                      )}{" "}
+                                      /{" "}
+                                      {Number(
+                                        item.frecuencia_horas,
+                                      ).toLocaleString("es-AR")}{" "}
+                                      hs
+                                    </strong>
+                                  </div>
+
+                                  <div className="barra-progreso-componente">
+                                    <div
+                                      className={`barra-progreso-relleno progreso-${item.estado
+                                        .toLowerCase()
+                                        .replaceAll(" ", "-")}`}
+                                      style={{
+                                        width: `${progreso}%`,
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="componente-sin-historial">
+                                Sin historial registrado.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ) : (
-                  <p>No hay mantenimientos generales registrados.</p>
+                  <div className="componentes-dashboard">
+                    <div className="dashboard-sin-datos">
+                      No hay mantenimientos generales registrados.
+                    </div>
+                  </div>
                 )}
 
                 <h3>Plan de mantenimiento</h3>
+                <div className="plan-dashboard">
+                  <div className="plan-dashboard-header">
+                    <div>
+                      <span className="dashboard-panel-etiqueta">
+                        PLAN ASIGNADO
+                      </span>
 
-                {planMantenimiento.length > 0 ? (
-                  <>
-                    <p>
-                      <strong>Plan:</strong> {planMantenimiento[0].plan}
-                    </p>
+                      <h3>Plan de mantenimiento</h3>
 
-                    <div className="plan-mantenimiento">
-                      {planMantenimiento.map((item) => (
-                        <div className="filtro" key={item.componente_id}>
-                          <strong>{item.componente}</strong>
-
-                          <span>{item.codigo || "---"}</span>
-
-                          {item.cantidad && (
-                            <small>
-                              Cantidad: {item.cantidad} {item.unidad || ""}
-                            </small>
-                          )}
-
-                          <small>Cada {item.frecuencia_horas} hs</small>
-
-                          {item.opcional && <small>Opcional</small>}
-                        </div>
-                      ))}
+                      {planMantenimiento.length > 0 && (
+                        <p>{planMantenimiento[0].plan}</p>
+                      )}
                     </div>
-                  </>
-                ) : (
-                  <p>Este equipo no tiene un plan de mantenimiento asignado.</p>
-                )}
+
+                    {planMantenimiento.length > 0 && (
+                      <div className="plan-dashboard-total">
+                        <strong>{planMantenimiento.length}</strong>
+
+                        <span>
+                          {planMantenimiento.length === 1
+                            ? "componente"
+                            : "componentes"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {planMantenimiento.length > 0 ? (
+                    <div className="plan-dashboard-contenido">
+                      <div className="plan-dashboard-titulos">
+                        <span>Componente</span>
+                        <span>Código</span>
+                        <span>Cantidad</span>
+                        <span>Frecuencia</span>
+                      </div>
+
+                      <div className="plan-dashboard-lista">
+                        {planMantenimiento.map((item) => (
+                          <div
+                            className="plan-dashboard-item"
+                            key={item.componente_id}
+                          >
+                            <div className="plan-componente">
+                              <div className="plan-componente-icono">✓</div>
+
+                              <div>
+                                <strong>{item.componente}</strong>
+
+                                {item.opcional && (
+                                  <span className="plan-opcional">
+                                    Opcional
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="plan-dato" data-label="Código">
+                              <span className="plan-codigo">
+                                {item.codigo || "—"}
+                              </span>
+                            </div>
+
+                            <div className="plan-dato" data-label="Cantidad">
+                              <strong>{item.cantidad || "—"}</strong>
+
+                              {item.cantidad && (
+                                <small>{item.unidad || "UN"}</small>
+                              )}
+                            </div>
+
+                            <div className="plan-dato" data-label="Frecuencia">
+                              <strong>
+                                {Number(item.frecuencia_horas).toLocaleString(
+                                  "es-AR",
+                                )}
+                              </strong>
+
+                              <small>hs</small>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="plan-dashboard-vacio">
+                      <div className="plan-vacio-icono">!</div>
+
+                      <div>
+                        <strong>Sin plan asignado</strong>
+
+                        <p>
+                          Este equipo no tiene un plan de mantenimiento
+                          asignado.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </main>
