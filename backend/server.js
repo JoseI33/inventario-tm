@@ -587,56 +587,166 @@ app.get("/equipos-activos", async (req, res) => {
 
 app.post("/equipos", async (req, res) => {
   const {
-    interno,
+    categoria = "MAQUINARIA",
+
+    // Datos generales
     tipo,
     marca,
     modelo,
+
+    // Maquinaria
+    interno,
     horometro_actual,
     frecuencia_service,
+
+    // Flota
+    patente,
+    anio,
+    responsable,
+    kilometraje_actual,
   } = req.body;
 
   try {
-    if (!interno || !tipo || !marca || !horometro_actual) {
+    // =========================
+    // VALIDACIÓN GENERAL
+    // =========================
+
+    if (!tipo || !marca) {
       return res.status(400).json({
         error: "Completá los campos obligatorios.",
       });
     }
 
-    const existe = await pool.query(
-      "SELECT id FROM equipos WHERE interno = $1",
-      [interno]
-    );
+    // =========================
+    // MAQUINARIA
+    // =========================
 
-    if (existe.rows.length > 0) {
-      return res.status(400).json({
-        error: `El interno ${interno} ya existe.`,
-      });
+    if (categoria === "MAQUINARIA") {
+      if (
+        !interno ||
+        horometro_actual === "" ||
+        horometro_actual === null ||
+        horometro_actual === undefined
+      ) {
+        return res.status(400).json({
+          error: "Completá interno y horómetro actual.",
+        });
+      }
+
+      const existe = await pool.query(
+        "SELECT id FROM equipos WHERE interno = $1",
+        [interno]
+      );
+
+      if (existe.rows.length > 0) {
+        return res.status(400).json({
+          error: `El interno ${interno} ya existe.`,
+        });
+      }
+
+      const resultado = await pool.query(
+        `
+        INSERT INTO equipos (
+          categoria,
+          interno,
+          tipo,
+          marca,
+          modelo,
+          horometro_actual,
+          frecuencia_service
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+        `,
+        [
+          "MAQUINARIA",
+          interno,
+          tipo,
+          marca,
+          modelo || null,
+          Number(horometro_actual),
+          Number(frecuencia_service) || 300,
+        ]
+      );
+
+      return res.status(201).json(resultado.rows[0]);
     }
 
-    const resultado = await pool.query(
-      `
-      INSERT INTO equipos (
-        interno,
-        tipo,
-        marca,
-        modelo,
-        horometro_actual,
-        frecuencia_service
-      )
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-      `,
-      [
-        interno,
-        tipo,
-        marca,
-        modelo || null,
-        Number(horometro_actual),
-        Number(frecuencia_service) || 300,
-      ]
-    );
+    // =========================
+    // FLOTA
+    // =========================
 
-    res.status(201).json(resultado.rows[0]);
+    if (categoria === "FLOTA") {
+      if (
+        !patente ||
+        kilometraje_actual === "" ||
+        kilometraje_actual === null ||
+        kilometraje_actual === undefined
+      ) {
+        return res.status(400).json({
+          error: "Completá patente y kilometraje actual.",
+        });
+      }
+
+      const patenteNormalizada = patente
+        .trim()
+        .toUpperCase();
+
+      const existe = await pool.query(
+        `
+        SELECT id
+        FROM equipos
+        WHERE UPPER(patente) = $1
+        `,
+        [patenteNormalizada]
+      );
+
+      if (existe.rows.length > 0) {
+        return res.status(400).json({
+          error: `La patente ${patenteNormalizada} ya existe.`,
+        });
+      }
+
+      const resultado = await pool.query(
+        `
+        INSERT INTO equipos (
+          categoria,
+          interno,
+          patente,
+          tipo,
+          marca,
+          modelo,
+          anio,
+          responsable,
+          kilometraje_actual,
+          horometro_actual,
+          frecuencia_service
+        )
+        VALUES (
+          $1, NULL, $2, $3, $4, $5,
+          $6, $7, $8, NULL, NULL
+        )
+        RETURNING *
+        `,
+        [
+          "FLOTA",
+          patenteNormalizada,
+          tipo,
+          marca,
+          modelo || null,
+          anio ? Number(anio) : null,
+          responsable || null,
+          Number(kilometraje_actual),
+        ]
+      );
+
+      return res.status(201).json(resultado.rows[0]);
+    }
+
+    // Categoría desconocida
+    return res.status(400).json({
+      error: "Categoría de equipo no válida.",
+    });
 
   } catch (error) {
     console.error(error);
@@ -644,6 +754,156 @@ app.post("/equipos", async (req, res) => {
     res.status(500).json({
       error: "Error al crear el equipo.",
     });
+  }
+});
+
+app.post("/flota/:id/lecturas", async (req, res) => {
+  const { id } = req.params;
+  const { fecha, kilometraje, observaciones } = req.body;
+
+  const client = await pool.connect();
+
+  try {
+    if (
+      kilometraje === "" ||
+      kilometraje === null ||
+      kilometraje === undefined
+    ) {
+      return res.status(400).json({
+        error: "Ingresá el kilometraje.",
+      });
+    }
+
+    const nuevoKilometraje = Number(kilometraje);
+
+    if (
+      !Number.isInteger(nuevoKilometraje) ||
+      nuevoKilometraje < 0
+    ) {
+      return res.status(400).json({
+        error: "El kilometraje ingresado no es válido.",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    // Buscamos y bloqueamos el vehículo mientras actualizamos
+    const equipoResultado = await client.query(
+      `
+      SELECT
+        id,
+        patente,
+        categoria,
+        kilometraje_actual
+      FROM equipos
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+    if (equipoResultado.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Vehículo no encontrado.",
+      });
+    }
+
+    const vehiculo = equipoResultado.rows[0];
+
+    if (vehiculo.categoria !== "FLOTA") {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        error: "El equipo seleccionado no pertenece a Flota.",
+      });
+    }
+
+    // Buscamos la última lectura registrada
+    const ultimaLecturaResultado = await client.query(
+      `
+      SELECT kilometraje
+      FROM flota_lecturas
+      WHERE equipo_id = $1
+      ORDER BY fecha DESC, id DESC
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    const ultimaLectura =
+      ultimaLecturaResultado.rows.length > 0
+        ? Number(ultimaLecturaResultado.rows[0].kilometraje)
+        : Number(vehiculo.kilometraje_actual || 0);
+
+    // Evitamos que el kilometraje retroceda
+    if (nuevoKilometraje < ultimaLectura) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        error: `El kilometraje no puede ser menor a ${ultimaLectura.toLocaleString(
+          "es-AR"
+        )} km.`,
+      });
+    }
+
+    // Guardamos la lectura
+    const lecturaResultado = await client.query(
+      `
+      INSERT INTO flota_lecturas (
+        equipo_id,
+        fecha,
+        kilometraje,
+        observaciones
+      )
+      VALUES ($1, COALESCE($2::date, CURRENT_DATE), $3, $4)
+      RETURNING *
+      `,
+      [
+        id,
+        fecha || null,
+        nuevoKilometraje,
+        observaciones || null,
+      ]
+    );
+
+    // Actualizamos el kilometraje rápido del vehículo
+    await client.query(
+      `
+      UPDATE equipos
+      SET kilometraje_actual = $1
+      WHERE id = $2
+      `,
+      [nuevoKilometraje, id]
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(201).json({
+      mensaje: "Kilometraje registrado correctamente.",
+      patente: vehiculo.patente,
+      lectura: lecturaResultado.rows[0],
+      kilometraje_actual: nuevoKilometraje,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error(error);
+
+    // Dos lecturas para el mismo vehículo el mismo día
+    if (error.code === "23505") {
+      return res.status(400).json({
+        error:
+          "Ya existe una lectura para este vehículo en esa fecha.",
+      });
+    }
+
+    return res.status(500).json({
+      error: "Error al registrar el kilometraje.",
+    });
+  } finally {
+    client.release();
   }
 });
 

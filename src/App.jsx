@@ -150,12 +150,23 @@ function App() {
 
   // NUEVO EQUIPO
   const [nuevoEquipo, setNuevoEquipo] = useState({
+    categoria: "MAQUINARIA",
+
+    // Maquinaria
     interno: "",
+    horometro_actual: "",
+    frecuencia_service: "",
+
+    // Datos generales
     tipo: "",
     marca: "",
     modelo: "",
-    horometro_actual: "",
-    frecuencia_service: 300,
+
+    // Flota
+    patente: "",
+    anio: "",
+    responsable: "",
+    kilometraje_actual: "",
   });
 
   const [mensajeNuevoEquipo, setMensajeNuevoEquipo] = useState("");
@@ -519,25 +530,42 @@ function App() {
         return;
       }
 
-      // setInternoCreado(data.interno);
-      setInternoContrato(data.interno);
-
-      // Lo agregamos también al estado de React
+      // Lo agregamos al estado de React
       setEquipos((equiposActuales) => [...equiposActuales, data]);
 
-      setMensajeNuevoEquipo(`Interno ${data.interno} creado correctamente.`);
+      if (nuevoEquipo.categoria === "MAQUINARIA") {
+        // Solo maquinaria continúa con asignación de contrato
+        setInternoContrato(data.interno);
 
-      // Limpiamos el formulario
+        setMensajeNuevoEquipo(`Interno ${data.interno} creado correctamente.`);
+      } else {
+        // Flota no utiliza interno ni contrato
+        setInternoContrato("");
+
+        setMensajeNuevoEquipo(`Vehículo ${data.patente} creado correctamente.`);
+      }
+
+      // Limpiamos el formulario manteniendo
+      // la categoría que estaba seleccionada
       setNuevoEquipo({
+        categoria: nuevoEquipo.categoria,
+
         interno: "",
+        horometro_actual: "",
+        frecuencia_service: 300,
+
         tipo: "",
         marca: "",
         modelo: "",
-        horometro_actual: "",
-        frecuencia_service: 300,
+
+        patente: "",
+        anio: "",
+        responsable: "",
+        kilometraje_actual: "",
       });
     } catch (error) {
       console.error(error);
+
       setMensajeNuevoEquipo("Error de conexión con el servidor.");
     }
   };
@@ -3918,210 +3946,447 @@ function App() {
 
             <h2>Nuevo equipo</h2>
 
-            <form className="form-nuevo-equipo" onSubmit={guardarNuevoEquipo}>
-              <label>
-                Interno *
-                <input
-                  type="text"
-                  value={nuevoEquipo.interno}
-                  onChange={(e) =>
-                    setNuevoEquipo({
-                      ...nuevoEquipo,
-                      interno: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </label>
+            <div className="selector-categoria-equipo">
+              <button
+                type="button"
+                className={`categoria-equipo-card ${
+                  nuevoEquipo.categoria === "MAQUINARIA" ? "activo" : ""
+                }`}
+                onClick={() =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    categoria: "MAQUINARIA",
+                  })
+                }
+              >
+                <span className="categoria-equipo-icono">⚙️</span>
 
-              <label>
-                Tipo de equipo *
-                <input
-                  type="text"
-                  placeholder="Ej: Autoelevador"
-                  value={nuevoEquipo.tipo}
-                  onChange={(e) =>
-                    setNuevoEquipo({
-                      ...nuevoEquipo,
-                      tipo: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </label>
+                <div>
+                  <strong>Maquinarias</strong>
+                  <small>Interno + horómetro</small>
+                  <small>Mantenimiento por horas</small>
+                </div>
+              </button>
 
-              <label>
-                Marca *
-                <input
-                  type="text"
-                  placeholder="Ej: Mitsubishi"
-                  value={nuevoEquipo.marca}
-                  onChange={(e) =>
-                    setNuevoEquipo({
-                      ...nuevoEquipo,
-                      marca: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </label>
+              <button
+                type="button"
+                className={`categoria-equipo-card ${
+                  nuevoEquipo.categoria === "FLOTA" ? "activo" : ""
+                }`}
+                onClick={() =>
+                  setNuevoEquipo({
+                    ...nuevoEquipo,
+                    categoria: "FLOTA",
+                  })
+                }
+              >
+                <span className="categoria-equipo-icono">🚗</span>
 
-              <label>
-                Modelo
-                <input
-                  type="text"
-                  value={nuevoEquipo.modelo}
-                  onChange={(e) =>
-                    setNuevoEquipo({
-                      ...nuevoEquipo,
-                      modelo: e.target.value,
-                    })
-                  }
-                />
-              </label>
+                <div>
+                  <strong>Vehículos de Flota</strong>
+                  <small>Patente + kilometraje</small>
+                  <small>Mantenimiento por kilómetros</small>
+                </div>
+              </button>
+            </div>
 
-              <label>
-                Horómetro actual *
-                <input
-                  type="number"
-                  min="0"
-                  value={nuevoEquipo.horometro_actual}
-                  onChange={(e) =>
-                    setNuevoEquipo({
-                      ...nuevoEquipo,
-                      horometro_actual: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </label>
+            <div
+              className={`nuevo-equipo-dashboard ${
+                nuevoEquipo.categoria === "FLOTA"
+                  ? "dashboard-flota"
+                  : "dashboard-maquinaria"
+              }`}
+            >
+              <div className="nuevo-equipo-dashboard-header">
+                <div className="nuevo-equipo-dashboard-titulo">
+                  <span className="nuevo-equipo-dashboard-icono">
+                    {nuevoEquipo.categoria === "FLOTA" ? "🚗" : "⚙️"}
+                  </span>
 
-              <label>
-                Frecuencia de service
-                <input
-                  type="number"
-                  min="1"
-                  value={nuevoEquipo.frecuencia_service}
-                  onChange={(e) =>
-                    setNuevoEquipo({
-                      ...nuevoEquipo,
-                      frecuencia_service: e.target.value,
-                    })
-                  }
-                />
-              </label>
+                  <div>
+                    <span className="nuevo-equipo-dashboard-etiqueta">
+                      NUEVO REGISTRO
+                    </span>
 
-              <button type="submit">Guardar equipo</button>
-            </form>
+                    <h3>
+                      {nuevoEquipo.categoria === "FLOTA"
+                        ? "Vehículo de Flota"
+                        : "Maquinaria / Equipo"}
+                    </h3>
 
+                    <p>
+                      {nuevoEquipo.categoria === "FLOTA"
+                        ? "Alta de vehículo y control por kilometraje"
+                        : "Alta de equipo y mantenimiento por horas"}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="nuevo-equipo-dashboard-badge">
+                  {nuevoEquipo.categoria === "FLOTA"
+                    ? "CONTROL KM"
+                    : "CONTROL HS"}
+                </span>
+              </div>
+
+              <form
+                className="form-nuevo-equipo form-nuevo-equipo-dashboard"
+                onSubmit={guardarNuevoEquipo}
+              >
+                {nuevoEquipo.categoria === "MAQUINARIA" ? (
+                  <label>
+                    Interno *
+                    <input
+                      type="text"
+                      value={nuevoEquipo.interno}
+                      onChange={(e) =>
+                        setNuevoEquipo({
+                          ...nuevoEquipo,
+                          interno: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </label>
+                ) : (
+                  <label>
+                    Patente *
+                    <input
+                      type="text"
+                      placeholder="Ej: Patente"
+                      value={nuevoEquipo.patente}
+                      onChange={(e) =>
+                        setNuevoEquipo({
+                          ...nuevoEquipo,
+                          patente: e.target.value.toUpperCase(),
+                        })
+                      }
+                      required
+                    />
+                  </label>
+                )}
+
+                <label>
+                  Tipo de equipo *
+                  <input
+                    type="text"
+                    placeholder="Ej: Camión, Tractor, Autoelevador..."
+                    value={nuevoEquipo.tipo}
+                    onChange={(e) =>
+                      setNuevoEquipo({
+                        ...nuevoEquipo,
+                        tipo: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </label>
+
+                <label>
+                  Marca *
+                  <input
+                    type="text"
+                    placeholder="Ej: Fiat, John Deere, Toyota..."
+                    value={nuevoEquipo.marca}
+                    onChange={(e) =>
+                      setNuevoEquipo({
+                        ...nuevoEquipo,
+                        marca: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </label>
+
+                <label>
+                  Modelo
+                  <input
+                    type="text"
+                    value={nuevoEquipo.modelo}
+                    onChange={(e) =>
+                      setNuevoEquipo({
+                        ...nuevoEquipo,
+                        modelo: e.target.value,
+                      })
+                    }
+                  />
+                </label>
+
+                {nuevoEquipo.categoria === "MAQUINARIA" ? (
+                  <>
+                    <label>
+                      Horómetro actual *
+                      <input
+                        type="number"
+                        min="0"
+                        value={nuevoEquipo.horometro_actual}
+                        onChange={(e) =>
+                          setNuevoEquipo({
+                            ...nuevoEquipo,
+                            horometro_actual: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Frecuencia de service
+                      <input
+                        type="number"
+                        min="1"
+                        value={nuevoEquipo.frecuencia_service}
+                        onChange={(e) =>
+                          setNuevoEquipo({
+                            ...nuevoEquipo,
+                            frecuencia_service: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label>
+                      Año
+                      <input
+                        type="number"
+                        min="1900"
+                        max="2100"
+                        placeholder="Ej: 2020"
+                        value={nuevoEquipo.anio}
+                        onChange={(e) =>
+                          setNuevoEquipo({
+                            ...nuevoEquipo,
+                            anio: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Kilometraje actual *
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Ej: 502331"
+                        value={nuevoEquipo.kilometraje_actual}
+                        onChange={(e) =>
+                          setNuevoEquipo({
+                            ...nuevoEquipo,
+                            kilometraje_actual: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Responsable
+                      <input
+                        type="text"
+                        placeholder="Ej: Oscar L."
+                        value={nuevoEquipo.responsable}
+                        onChange={(e) =>
+                          setNuevoEquipo({
+                            ...nuevoEquipo,
+                            responsable: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+
+                <button type="submit">Guardar equipo</button>
+              </form>
+            </div>
             <hr />
 
-            <h2 className="titulo-nuevo-equipo">Asignar contrato</h2>
+            {nuevoEquipo.categoria === "MAQUINARIA" && (
+              <div className="contrato-dashboard">
+                <div className="contrato-dashboard-header">
+                  <div className="contrato-dashboard-titulo">
+                    <span className="contrato-dashboard-icono">📄</span>
 
-            {internoContrato ? (
-              <p className="mensaje">
-                Equipo seleccionado: <strong>Interno {internoContrato}</strong>
-              </p>
-            ) : (
-              <p className="mensaje">Primero guardá el nuevo equipo.</p>
+                    <div>
+                      <span className="contrato-dashboard-etiqueta">
+                        CONTRATO
+                      </span>
+
+                      <h3>Asignar contrato</h3>
+
+                      <p>
+                        Vinculá el equipo a un contrato y registrá sus datos
+                        iniciales
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="contrato-dashboard-badge">ASIGNACIÓN</span>
+                </div>
+
+                <div className="contrato-dashboard-body">
+                  <div className="contrato-seccion-titulo">
+                    IDENTIFICACIÓN DEL EQUIPO
+                  </div>
+
+                  <div className="contrato-fila-superior">
+                    <label>
+                      Buscar por interno *
+                      <input
+                        type="text"
+                        placeholder="Ej: 62"
+                        value={internoContrato}
+                        onChange={(e) => setInternoContrato(e.target.value)}
+                      />
+                    </label>
+
+                    {(() => {
+                      const equipoEncontrado = equipos.find(
+                        (equipo) =>
+                          String(equipo.interno).trim().toLowerCase() ===
+                            String(internoContrato).trim().toLowerCase() &&
+                          (!equipo.categoria ||
+                            equipo.categoria === "MAQUINARIA"),
+                      );
+
+                      if (!internoContrato) {
+                        return (
+                          <div className="contrato-equipo-estado">
+                            <span>ℹ</span>
+                            <p>Ingresá el interno del equipo.</p>
+                          </div>
+                        );
+                      }
+
+                      if (!equipoEncontrado) {
+                        return (
+                          <div className="contrato-equipo-estado no-encontrado">
+                            <span>!</span>
+                            <p>No encontramos el interno {internoContrato}.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="contrato-equipo-estado seleccionado">
+                          <span>✓</span>
+
+                          <div>
+                            <strong>Interno {equipoEncontrado.interno}</strong>
+
+                            <p>
+                              {equipoEncontrado.tipo || "Equipo"} ·{" "}
+                              {equipoEncontrado.marca || "-"}{" "}
+                              {equipoEncontrado.modelo || ""}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="contrato-seccion-titulo">
+                    DATOS DEL CONTRATO
+                  </div>
+
+                  <div className="contrato-form-grid">
+                    <label>
+                      Empresa *
+                      <input
+                        type="text"
+                        value={nuevoContrato.empresa}
+                        onChange={(e) =>
+                          setNuevoContrato({
+                            ...nuevoContrato,
+                            empresa: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Ubicación
+                      <input
+                        type="text"
+                        value={nuevoContrato.ubicacion}
+                        onChange={(e) =>
+                          setNuevoContrato({
+                            ...nuevoContrato,
+                            ubicacion: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Fecha de inicio *
+                      <input
+                        type="date"
+                        value={nuevoContrato.fecha_inicio}
+                        onChange={(e) =>
+                          setNuevoContrato({
+                            ...nuevoContrato,
+                            fecha_inicio: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Horómetro de inicio *
+                      <input
+                        type="number"
+                        value={nuevoContrato.horometro_inicio}
+                        onChange={(e) =>
+                          setNuevoContrato({
+                            ...nuevoContrato,
+                            horometro_inicio: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label className="contrato-tipo">
+                      Tipo de contrato *
+                      <select
+                        value={nuevoContrato.tipo_contrato}
+                        onChange={(e) =>
+                          setNuevoContrato({
+                            ...nuevoContrato,
+                            tipo_contrato: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="Alquiler">Alquiler</option>
+                        <option value="Movimiento de carga">
+                          Movimiento de carga
+                        </option>
+                        <option value="Servicio agricola">
+                          Servicio agrícola
+                        </option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="contrato-dashboard-acciones">
+                    <button
+                      type="button"
+                      onClick={guardarContrato}
+                      disabled={!internoContrato}
+                    >
+                      Guardar contrato
+                    </button>
+                  </div>
+
+                  {mensajeContrato && (
+                    <p className="mensaje">{mensajeContrato}</p>
+                  )}
+                </div>
+              </div>
             )}
-
-            <label>
-              Interno *
-              <select
-                value={internoContrato}
-                onChange={(e) => setInternoContrato(e.target.value)}
-              >
-                <option value="">Seleccionar equipo...</option>
-
-                {equipos.map((equipo) => (
-                  <option key={equipo.id} value={equipo.interno}>
-                    Interno {equipo.interno} - {equipo.marca} {equipo.modelo}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="form-nuevo-equipo">
-              <label>
-                Empresa *
-                <input
-                  type="text"
-                  value={nuevoContrato.empresa}
-                  onChange={(e) =>
-                    setNuevoContrato({
-                      ...nuevoContrato,
-                      empresa: e.target.value,
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                Ubicación
-                <input
-                  type="text"
-                  value={nuevoContrato.ubicacion}
-                  onChange={(e) =>
-                    setNuevoContrato({
-                      ...nuevoContrato,
-                      ubicacion: e.target.value,
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                Fecha de inicio *
-                <input
-                  type="date"
-                  value={nuevoContrato.fecha_inicio}
-                  onChange={(e) =>
-                    setNuevoContrato({
-                      ...nuevoContrato,
-                      fecha_inicio: e.target.value,
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                Horómetro de inicio *
-                <input
-                  type="number"
-                  value={nuevoContrato.horometro_inicio}
-                  onChange={(e) =>
-                    setNuevoContrato({
-                      ...nuevoContrato,
-                      horometro_inicio: e.target.value,
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <select
-              value={nuevoContrato.tipo_contrato}
-              onChange={(e) =>
-                setNuevoContrato({
-                  ...nuevoContrato,
-                  tipo_contrato: e.target.value,
-                })
-              }
-            >
-              <option value="">Seleccionar tipo</option>
-              <option value="Alquiler">Alquiler</option>
-              <option value="Movimiento de carga">Movimiento de carga</option>
-              <option value="Servicio agricola">Servicio agricola</option>
-            </select>
-            <button
-              type="button"
-              onClick={guardarContrato}
-              disabled={!internoContrato}
-            >
-              Guardar contrato
-            </button>
-
-            {mensajeContrato && <p className="mensaje">{mensajeContrato}</p>}
 
             {mensajeNuevoEquipo && (
               <p className="mensaje">{mensajeNuevoEquipo}</p>
@@ -4637,62 +4902,6 @@ function App() {
                   </div>
                 </div>
 
-                <div className="equipo-dashboard-resumen">
-                  <div className="resumen-mantenimiento-card">
-                    <span>Último service</span>
-
-                    <strong>
-                      {ultimoService
-                        ? `${Number(ultimoService.horometro).toLocaleString(
-                            "es-AR",
-                          )} hs`
-                        : "Sin registro"}
-                    </strong>
-                  </div>
-
-                  <div className="resumen-mantenimiento-card">
-                    <span>Próximo service</span>
-
-                    <strong>
-                      {proximoService
-                        ? `${Number(proximoService).toLocaleString("es-AR")} hs`
-                        : "-"}
-                    </strong>
-                  </div>
-
-                  <div className="resumen-mantenimiento-card">
-                    <span>
-                      {horasRestantes < 0
-                        ? "Horas excedidas"
-                        : "Horas restantes"}
-                    </span>
-
-                    <strong>
-                      {ultimoService
-                        ? `${Math.abs(Number(horasRestantes)).toLocaleString(
-                            "es-AR",
-                          )} hs`
-                        : "-"}
-                    </strong>
-                  </div>
-
-                  <div className="resumen-mantenimiento-card">
-                    <span>Estado</span>
-
-                    {ultimoService ? (
-                      <div
-                        className={`estado ${obtenerEstado().replaceAll(
-                          " ",
-                          "-",
-                        )}`}
-                      >
-                        {obtenerEstado()}
-                      </div>
-                    ) : (
-                      <strong>Sin registro</strong>
-                    )}
-                  </div>
-                </div>
                 <div className="horometro-dashboard-grid">
                   {/* ACTUALIZAR HORÓMETRO */}
                   <div className="dashboard-panel">
