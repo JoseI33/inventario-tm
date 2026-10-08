@@ -36,6 +36,14 @@ function App() {
   const [filtroTipoContratoHistorial, setFiltroTipoContratoHistorial] =
     useState("");
 
+  // FLOTA
+  const [patenteFlota, setPatenteFlota] = useState("");
+  const [kilometrajeFlota, setKilometrajeFlota] = useState("");
+  const [fechaLecturaFlota, setFechaLecturaFlota] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [mensajeFlota, setMensajeFlota] = useState("");
+
   // INFORMES TECNICOS
   const [equipoInforme, setEquipoInforme] = useState(null);
   const [busquedaInternoInforme, setBusquedaInternoInforme] = useState("");
@@ -1629,6 +1637,94 @@ function App() {
     return Math.min(Math.max(porcentaje, 0), 100);
   };
 
+  const vehiculosFlota = equipos.filter(
+    (equipo) => equipo.categoria === "FLOTA",
+  );
+
+  const normalizarPatente = (valor) =>
+    String(valor || "")
+      .replace(/\s/g, "")
+      .toUpperCase();
+
+  const coincidenciasFlota =
+    patenteFlota.trim().length >= 2
+      ? vehiculosFlota.filter((vehiculo) =>
+          normalizarPatente(vehiculo.patente).includes(
+            normalizarPatente(patenteFlota),
+          ),
+        )
+      : [];
+
+  const vehiculoFlotaSeleccionado =
+    coincidenciasFlota.length === 1
+      ? coincidenciasFlota[0]
+      : vehiculosFlota.find(
+          (vehiculo) =>
+            normalizarPatente(vehiculo.patente) ===
+            normalizarPatente(patenteFlota),
+        );
+
+  const guardarLecturaFlota = async () => {
+    if (!vehiculoFlotaSeleccionado) {
+      setMensajeFlota("Seleccioná un vehículo válido.");
+      return;
+    }
+
+    if (!kilometrajeFlota) {
+      setMensajeFlota("Ingresá el nuevo kilometraje.");
+      return;
+    }
+
+    setMensajeFlota("");
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/flota/${vehiculoFlotaSeleccionado.id}/lecturas`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fecha: fechaLecturaFlota,
+            kilometraje: Number(kilometrajeFlota),
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeFlota(data.error || "No se pudo registrar el kilometraje.");
+        return;
+      }
+
+      // Actualizamos el kilometraje en el estado general
+      setEquipos((equiposActuales) =>
+        equiposActuales.map((equipo) =>
+          equipo.id === vehiculoFlotaSeleccionado.id
+            ? {
+                ...equipo,
+                kilometraje_actual: data.kilometraje_actual,
+              }
+            : equipo,
+        ),
+      );
+
+      setKilometrajeFlota("");
+
+      setMensajeFlota(
+        `✓ Lectura registrada: ${Number(data.kilometraje_actual).toLocaleString(
+          "es-AR",
+        )} km`,
+      );
+    } catch (error) {
+      console.error(error);
+
+      setMensajeFlota("Error de conexión con el servidor.");
+    }
+  };
+
   return (
     <div className="app-layout">
       {/* ================================= */}
@@ -1688,6 +1784,13 @@ function App() {
             onClick={() => setModulo("inventario")}
           >
             🏗 Inventario de Máquinas
+          </button>
+
+          <button
+            className={`sidebar-item ${modulo === "flota" ? "activo" : ""}`}
+            onClick={() => setModulo("flota")}
+          >
+            🚗 Flota
           </button>
 
           <button
@@ -4049,22 +4152,38 @@ function App() {
                     />
                   </label>
                 ) : (
-                  <label>
-                    Patente *
+                  <div className="flota-campo">
+                    <span className="flota-campo-label">Patente</span>
+
                     <input
                       type="text"
-                      placeholder="Ej: Patente"
-                      value={nuevoEquipo.patente}
+                      placeholder="Ej: JVM 256"
+                      value={patenteFlota}
                       onChange={(e) =>
-                        setNuevoEquipo({
-                          ...nuevoEquipo,
-                          patente: e.target.value.toUpperCase(),
-                        })
+                        setPatenteFlota(e.target.value.toUpperCase())
                       }
-                      required
                     />
-                  </label>
+                  </div>
                 )}
+
+                {patenteFlota.trim().length >= 2 &&
+                  coincidenciasFlota.length > 1 && (
+                    <div className="flota-sugerencias">
+                      {coincidenciasFlota.slice(0, 6).map((vehiculo) => (
+                        <button
+                          key={vehiculo.id}
+                          type="button"
+                          onClick={() => setPatenteFlota(vehiculo.patente)}
+                        >
+                          <strong>{vehiculo.patente}</strong>
+
+                          <span>
+                            {vehiculo.marca || "-"} {vehiculo.modelo || ""}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                 <label>
                   Tipo de equipo *
@@ -4845,6 +4964,151 @@ function App() {
             {mensajeConfiguracion && (
               <p className="mensaje">{mensajeConfiguracion}</p>
             )}
+          </main>
+        )}
+
+        {modulo === "flota" && (
+          <main className="panel panel-tabla flota-dashboard">
+            <button className="volver" onClick={() => setModulo("inicio")}>
+              ← Volver
+            </button>
+
+            <div className="flota-titulo">
+              <div>
+                <span className="flota-etiqueta">GESTIÓN DE VEHÍCULOS</span>
+                <h2>Flota</h2>
+                <p>Control de kilometraje y mantenimiento preventivo</p>
+              </div>
+
+              <div className="flota-titulo-icono">🚗</div>
+            </div>
+
+            <div className="flota-resumen">
+              <div className="flota-resumen-card">
+                <span>VEHÍCULOS</span>
+                <strong>{vehiculosFlota.length}</strong>
+                <small>Registrados</small>
+              </div>
+
+              <div className="flota-resumen-card">
+                <span>LECTURAS</span>
+                <strong>Semanal</strong>
+                <small>Control de kilometraje</small>
+              </div>
+
+              <div className="flota-resumen-card">
+                <span>MANTENIMIENTO</span>
+                <strong>Preventivo</strong>
+                <small>Por kilometraje</small>
+              </div>
+            </div>
+
+            <div className="flota-lectura-panel">
+              <div className="flota-panel-header">
+                <div>
+                  <span>CONTROL DE USO</span>
+                  <h3>Registrar lectura semanal</h3>
+                </div>
+
+                <span className="flota-panel-badge">KM</span>
+              </div>
+
+              <div className="flota-lectura-body">
+                <div className="flota-lectura-grid">
+                  <div className="flota-campo">
+                    <span className="flota-campo-label">Patente</span>
+
+                    <input
+                      type="text"
+                      placeholder="Ej: JVM 256"
+                      value={patenteFlota}
+                      onChange={(e) =>
+                        setPatenteFlota(e.target.value.toUpperCase())
+                      }
+                    />
+                  </div>
+
+                  <div className="flota-campo">
+                    <span className="flota-campo-label">Identificación</span>
+                    <div
+                      className={`flota-vehiculo-encontrado ${
+                        vehiculoFlotaSeleccionado ? "encontrado" : ""
+                      }`}
+                    >
+                      {vehiculoFlotaSeleccionado ? (
+                        <>
+                          <span>✓</span>
+
+                          <div>
+                            <strong>Vehículo encontrado</strong>
+
+                            <p>
+                              {vehiculoFlotaSeleccionado.marca || "-"}{" "}
+                              {vehiculoFlotaSeleccionado.modelo || ""}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span>ℹ</span>
+                          <p>Ingresá una patente registrada.</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flota-campo">
+                    <span className="flota-campo-label">
+                      Kilometraje actual
+                    </span>
+
+                    <div className="flota-km-actual">
+                      <strong>
+                        {vehiculoFlotaSeleccionado
+                          ? Number(
+                              vehiculoFlotaSeleccionado.kilometraje_actual || 0,
+                            ).toLocaleString("es-AR")
+                          : "-"}
+                      </strong>
+
+                      <span>km</span>
+                    </div>
+                  </div>
+
+                  <label>
+                    Nueva lectura *
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Ej: 503180"
+                      value={kilometrajeFlota}
+                      onChange={(e) => setKilometrajeFlota(e.target.value)}
+                    />
+                  </label>
+
+                  <label>
+                    Fecha
+                    <input
+                      type="date"
+                      value={fechaLecturaFlota}
+                      onChange={(e) => setFechaLecturaFlota(e.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className="flota-lectura-acciones">
+                  <button
+                    type="button"
+                    onClick={guardarLecturaFlota}
+                    disabled={!vehiculoFlotaSeleccionado || !kilometrajeFlota}
+                  >
+                    Registrar kilometraje
+                  </button>
+                </div>
+
+                {mensajeFlota && <p className="mensaje">{mensajeFlota}</p>}
+              </div>
+            </div>
           </main>
         )}
 

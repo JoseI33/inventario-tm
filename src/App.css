@@ -4283,3 +4283,357 @@ header p {
   background: #fef2f2;
   color: #b91c1c;
 }
+
+.flota-dashboard {
+  display: block;
+}
+
+.flota-titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin: 18px 0 22px;
+  padding: 22px 24px;
+
+  border-radius: 16px;
+  background: #1f3a5f;
+  color: white;
+}
+
+.flota-etiqueta {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #cbd5e1;
+}
+
+.flota-titulo h2 {
+  margin: 3px 0;
+  color: white;
+  font-size: 26px;
+}
+
+.flota-titulo p {
+  margin: 0;
+  color: #dbe4ef;
+  font-size: 13px;
+}
+
+.flota-titulo-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 55px;
+  height: 55px;
+
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+
+  font-size: 28px;
+}
+
+.flota-resumen {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.flota-resumen-card {
+  display: flex;
+  flex-direction: column;
+
+  padding: 18px 20px;
+
+  border: 1px solid #e3e8ef;
+  border-radius: 13px;
+  background: white;
+
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+}
+
+.flota-resumen-card > span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+}
+
+.flota-resumen-card strong {
+  margin: 6px 0 2px;
+
+  color: #1f3a5f;
+  font-size: 24px;
+}
+
+.flota-resumen-card small {
+  color: #94a3b8;
+}
+
+.flota-lectura-panel {
+  overflow: hidden;
+
+  border: 1px solid #e3e8ef;
+  border-radius: 16px;
+  background: white;
+
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.flota-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 18px 22px;
+  background: #1f3a5f;
+  color: white;
+}
+
+.flota-panel-header span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #cbd5e1;
+}
+
+.flota-panel-header h3 {
+  margin: 3px 0 0;
+  color: white;
+}
+
+.flota-panel-badge {
+  padding: 7px 12px;
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.flota-lectura-body {
+  padding: 22px;
+}
+
+.flota-lectura-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.flota-lectura-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.flota-lectura-grid input {
+  height: 45px;
+  box-sizing: border-box;
+
+  padding: 0 12px;
+
+  border: 1px solid #d7dee7;
+  border-radius: 9px;
+}
+
+.flota-vehiculo-encontrado,
+.flota-km-actual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+
+  height: 45px;
+  box-sizing: border-box;
+
+  padding: 0 14px;
+
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.flota-vehiculo-encontrado.encontrado {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.flota-vehiculo-encontrado p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.flota-vehiculo-encontrado strong {
+  font-size: 13px;
+}
+
+.flota-km-actual strong {
+  font-size: 17px;
+  color: #1f3a5f;
+}
+
+.flota-km-actual span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.flota-lectura-acciones {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.flota-lectura-acciones button {
+  padding: 11px 20px;
+
+  border: none;
+  border-radius: 9px;
+
+  background: #1f3a5f;
+  color: white;
+
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.flota-lectura-acciones button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .flota-resumen,
+  .flota-lectura-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.flota-vehiculo-encontrado,
+.flota-km-actual {
+  width: 100%;
+  height: 45px;
+  min-height: 45px;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.flota-km-actual {
+  justify-content: center;
+  text-align: center;
+}
+
+/* Primera fila de Flota */
+.flota-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+}
+
+.flota-campo-label {
+  display: block;
+  height: 20px;
+  line-height: 20px;
+
+  margin: 0;
+  padding: 0;
+
+  text-align: center;
+
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.flota-campo > input,
+.flota-campo > .flota-vehiculo-encontrado,
+.flota-campo > .flota-km-actual {
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+  height: 45px;
+  min-height: 45px;
+
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+.flota-campo > input {
+  padding: 0 12px;
+}
+
+.flota-campo > .flota-vehiculo-encontrado,
+.flota-campo > .flota-km-actual {
+  justify-content: center;
+}
+
+.flota-campo {
+  position: relative;
+}
+
+.flota-sugerencias {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+
+  z-index: 20;
+
+  overflow: hidden;
+
+  border: 1px solid #d7dee7;
+  border-radius: 9px;
+
+  background: white;
+
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.flota-sugerencias button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  width: 100%;
+
+  padding: 10px 12px;
+
+  border: none;
+  border-bottom: 1px solid #eef2f7;
+
+  background: white;
+  color: #1f3a5f;
+
+  text-align: left;
+  cursor: pointer;
+}
+
+.flota-sugerencias button:last-child {
+  border-bottom: none;
+}
+
+.flota-sugerencias button:hover {
+  background: #f1f5f9;
+}
+
+.flota-sugerencias strong {
+  font-size: 13px;
+}
+
+.flota-sugerencias span {
+  color: #64748b;
+  font-size: 12px;
+}
