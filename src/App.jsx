@@ -12,6 +12,7 @@ function App() {
   const [planesMantenimiento, setPlanesMantenimiento] = useState([]);
   const [planSeleccionado, setPlanSeleccionado] = useState("");
   const [editandoPlan, setEditandoPlan] = useState(false);
+  const [busquedaInternoConfig, setBusquedaInternoConfig] = useState("");
 
   const [equipoBaja, setEquipoBaja] = useState(null);
 
@@ -1724,6 +1725,93 @@ function App() {
       setMensajeFlota("Error de conexión con el servidor.");
     }
   };
+
+  const equiposMaquinaria = equipos.filter(
+    (equipo) => !equipo.categoria || equipo.categoria === "MAQUINARIA",
+  );
+
+  const coincidenciasConfig =
+    busquedaInternoConfig.trim().length >= 1
+      ? equiposMaquinaria.filter((equipo) =>
+          String(equipo.interno || "")
+            .toLowerCase()
+            .includes(busquedaInternoConfig.trim().toLowerCase()),
+        )
+      : [];
+
+  const seleccionarEquipoConfig = async (equipo) => {
+    const internoSeleccionado = String(equipo.interno);
+
+    setBusquedaInternoConfig(internoSeleccionado);
+    setConfigInterno(internoSeleccionado);
+
+    setConfigPlan("");
+    setConfigPlanNombre("");
+    setComponentesConfig([]);
+    setConfigComponentes({});
+    setEditandoPlan(false);
+    setPlanSeleccionado("");
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/equipos/${internoSeleccionado}/plan-mantenimiento`,
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Error al cargar plan:", data);
+        return;
+      }
+
+      if (data.length > 0) {
+        const planId = String(data[0].plan_id);
+
+        setConfigPlan(planId);
+        setConfigPlanNombre(data[0].plan);
+
+        const responseComponentes = await fetch(
+          `http://localhost:3000/planes-mantenimiento/${planId}/componentes`,
+        );
+
+        const componentes = await responseComponentes.json();
+
+        if (!responseComponentes.ok) {
+          console.error("Error al cargar componentes:", componentes);
+
+          setComponentesConfig([]);
+          return;
+        }
+
+        setComponentesConfig(componentes);
+
+        const nuevaConfiguracion = {};
+
+        componentes.forEach((item) => {
+          nuevaConfiguracion[item.componente_id] = {
+            componente_id: item.componente_id,
+            fecha: "",
+            horometro: "",
+            cambiado: false,
+            motivo: "",
+          };
+        });
+
+        setConfigComponentes(nuevaConfiguracion);
+      } else {
+        setConfigPlan("");
+        setConfigPlanNombre("");
+        setComponentesConfig([]);
+        setConfigComponentes({});
+      }
+    } catch (error) {
+      console.error("Error al consultar plan del equipo:", error);
+    }
+  };
+
+  const equipoConfigSeleccionado = equiposMaquinaria.find(
+    (equipo) => String(equipo.interno) === String(configInterno),
+  );
 
   return (
     <div className="app-layout">
@@ -4514,229 +4602,249 @@ function App() {
         )}
 
         {modulo === "config-mantenimiento" && (
-          <main className="panel panel-tabla">
+          <main className="panel panel-tabla config-mantenimiento-dashboard">
             <button className="volver" onClick={() => setModulo("inicio")}>
               ← Volver
             </button>
 
-            <h2 className="titulo-nuevo-equipo">
-              Configuración de mantenimiento
-            </h2>
+            <div className="config-dashboard-header">
+              <div>
+                <span className="config-dashboard-etiqueta">MANTENIMIENTO</span>
 
-            <div className="form-nuevo-equipo">
-              <label>
-                Interno
-                <select
-                  value={configInterno}
-                  onChange={async (e) => {
-                    const internoSeleccionado = e.target.value;
+                <h2>Configuración de mantenimiento</h2>
 
-                    setConfigInterno(internoSeleccionado);
-                    setConfigPlan("");
-                    setConfigPlanNombre("");
-                    setComponentesConfig([]);
-                    setConfigComponentes({});
+                <p>Planes, frecuencias y componentes por equipo</p>
+              </div>
 
-                    if (!internoSeleccionado) return;
+              <div className="config-dashboard-icono">⚙️</div>
+            </div>
 
-                    try {
-                      const response = await fetch(
-                        `http://localhost:3000/equipos/${internoSeleccionado}/plan-mantenimiento`,
-                      );
+            <div className="config-equipo-panel">
+              <div className="config-equipo-panel-header">
+                <div>
+                  <span>CONFIGURACIÓN DEL EQUIPO</span>
+                  <h3>Equipo y plan de mantenimiento</h3>
+                </div>
 
-                      const data = await response.json();
+                {configPlan && (
+                  <span className="config-plan-activo">PLAN ACTIVO</span>
+                )}
+              </div>
 
-                      if (!response.ok) {
-                        console.error("Error al cargar plan:", data);
-                        return;
-                      }
+              <div className="config-equipo-panel-body">
+                <div className="config-equipo-grid">
+                  <div className="config-buscador-equipo">
+                    <span className="config-campo-label">
+                      Buscar equipo por interno
+                    </span>
 
-                      if (data.length > 0) {
-                        const planId = String(data[0].plan_id);
+                    <input
+                      type="text"
+                      placeholder="Ej: 62"
+                      value={busquedaInternoConfig}
+                      onChange={(e) => {
+                        setBusquedaInternoConfig(e.target.value);
 
-                        setConfigPlan(planId);
-                        setConfigPlanNombre(data[0].plan);
-
-                        const responseComponentes = await fetch(
-                          `http://localhost:3000/planes-mantenimiento/${planId}/componentes`,
-                        );
-
-                        const componentes = await responseComponentes.json();
-
-                        if (!responseComponentes.ok) {
-                          console.error(
-                            "Error al cargar componentes:",
-                            componentes,
-                          );
+                        if (configInterno) {
+                          setConfigInterno("");
+                          setConfigPlan("");
+                          setConfigPlanNombre("");
                           setComponentesConfig([]);
-                          return;
+                          setConfigComponentes({});
+                          setEditandoPlan(false);
+                          setPlanSeleccionado("");
                         }
-
-                        setComponentesConfig(componentes);
-
-                        const nuevaConfiguracion = {};
-
-                        componentes.forEach((item) => {
-                          nuevaConfiguracion[item.componente_id] = {
-                            componente_id: item.componente_id,
-                            fecha: "",
-                            horometro: "",
-                            cambiado: false,
-                            motivo: "",
-                          };
-                        });
-
-                        setConfigComponentes(nuevaConfiguracion);
-                      } else {
-                        setConfigPlan("");
-                        setConfigPlanNombre("");
-                        setComponentesConfig([]);
-                        setConfigComponentes({});
-                      }
-                    } catch (error) {
-                      console.error(
-                        "Error al consultar plan del equipo:",
-                        error,
-                      );
-                    }
-                  }}
-                >
-                  <option value="">Seleccionar equipo...</option>
-
-                  {equipos.map((equipo) => (
-                    <option key={equipo.id} value={equipo.interno}>
-                      Interno {equipo.interno} - {equipo.marca} {equipo.modelo}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Plan de mantenimiento
-                {configPlan && !editandoPlan ? (
-                  <>
-                    <input type="text" value={configPlanNombre} readOnly />
-
-                    <button
-                      type="button"
-                      className="btn-plan"
-                      onClick={() => {
-                        setPlanSeleccionado(configPlan);
-                        setEditandoPlan(true);
                       }}
+                    />
+
+                    {busquedaInternoConfig.trim() &&
+                      !configInterno &&
+                      coincidenciasConfig.length > 0 && (
+                        <div className="config-sugerencias-equipo">
+                          {coincidenciasConfig.slice(0, 6).map((equipo) => (
+                            <button
+                              key={equipo.id}
+                              type="button"
+                              onClick={() => seleccionarEquipoConfig(equipo)}
+                            >
+                              <strong>Interno {equipo.interno}</strong>
+
+                              <span>
+                                {equipo.marca || "-"} {equipo.modelo || ""}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+
+                  <div className="config-equipo-identificacion">
+                    <span className="config-campo-label">
+                      Equipo seleccionado
+                    </span>
+
+                    <div
+                      className={`config-equipo-estado ${
+                        equipoConfigSeleccionado ? "seleccionado" : ""
+                      }`}
                     >
-                      Cambiar plan
-                    </button>
-                  </>
-                ) : (
-                  <select
-                    value={planSeleccionado}
-                    onChange={(e) => setPlanSeleccionado(e.target.value)}
-                    disabled={!configInterno}
-                  >
-                    <option value="">Seleccionar plan...</option>
+                      {equipoConfigSeleccionado ? (
+                        <>
+                          <span>✓</span>
 
-                    {planesMantenimiento.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.nombre}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </label>
-              {configInterno &&
-                planSeleccionado &&
-                (!configPlan || editandoPlan) && (
-                  <button
-                    className="btn-plan"
-                    type="button"
-                    onClick={async () => {
-                      if (configPlan && editandoPlan) {
-                        const confirmar = window.confirm(
-                          `¿Seguro que querés cambiar el plan del interno ${configInterno}?`,
-                        );
+                          <strong>
+                            {equipoConfigSeleccionado.tipo || "Equipo"}
+                          </strong>
+                        </>
+                      ) : (
+                        <>
+                          <span>ℹ</span>
+                          <p>Buscá un interno para configurar.</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
-                        if (!confirmar) {
-                          return;
-                        }
-                      }
-                      try {
-                        setMensajeConfiguracion("Asignando plan...");
+                  <div className="config-plan-campo">
+                    <span className="config-campo-label">
+                      Plan de mantenimiento
+                    </span>
 
-                        const response = await fetch(
-                          `http://localhost:3000/equipos/${configInterno}/plan-mantenimiento`,
-                          {
-                            method: "PUT",
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                              plan_id: Number(planSeleccionado),
-                            }),
-                          },
-                        );
+                    {configPlan && !editandoPlan ? (
+                      <div className="config-plan-fila">
+                        <div className="config-plan-nombre">
+                          <strong>{configPlanNombre}</strong>
+                        </div>
 
-                        const data = await response.json();
+                        <button
+                          type="button"
+                          className="config-plan-cambiar"
+                          onClick={() => {
+                            setPlanSeleccionado(configPlan);
+                            setEditandoPlan(true);
+                          }}
+                        >
+                          Cambiar plan
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="config-plan-seleccion">
+                        <select
+                          className="config-plan-select"
+                          value={planSeleccionado}
+                          onChange={(e) => setPlanSeleccionado(e.target.value)}
+                          disabled={!configInterno}
+                        >
+                          <option value="">Seleccionar plan...</option>
 
-                        if (!response.ok) {
-                          setMensajeConfiguracion(
-                            data.error || "Error al asignar el plan.",
-                          );
-                          return;
-                        }
+                          {planesMantenimiento.map((plan) => (
+                            <option key={plan.id} value={plan.id}>
+                              {plan.nombre}
+                            </option>
+                          ))}
+                        </select>
 
-                        const plan = planesMantenimiento.find(
-                          (item) =>
-                            String(item.id) === String(planSeleccionado),
-                        );
+                        {configInterno && planSeleccionado && (
+                          <button
+                            className="config-btn-asignar-plan"
+                            type="button"
+                            onClick={async () => {
+                              if (configPlan && editandoPlan) {
+                                const confirmar = window.confirm(
+                                  `¿Seguro que querés cambiar el plan del interno ${configInterno}?`,
+                                );
 
-                        // Cargar componentes del plan recién asignado
-                        const responseComponentes = await fetch(
-                          `http://localhost:3000/planes-mantenimiento/${planSeleccionado}/componentes`,
-                        );
+                                if (!confirmar) {
+                                  return;
+                                }
+                              }
 
-                        const componentes = await responseComponentes.json();
+                              try {
+                                setMensajeConfiguracion("Asignando plan...");
 
-                        if (!responseComponentes.ok) {
-                          setMensajeConfiguracion(
-                            "El plan se asignó, pero hubo un error al cargar sus componentes.",
-                          );
-                          return;
-                        }
+                                const response = await fetch(
+                                  `http://localhost:3000/equipos/${configInterno}/plan-mantenimiento`,
+                                  {
+                                    method: "PUT",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      plan_id: Number(planSeleccionado),
+                                    }),
+                                  },
+                                );
 
-                        setConfigPlan(String(planSeleccionado));
-                        setConfigPlanNombre(plan?.nombre || "");
-                        setComponentesConfig(componentes);
+                                const data = await response.json();
 
-                        const nuevaConfiguracion = {};
+                                if (!response.ok) {
+                                  setMensajeConfiguracion(
+                                    data.error || "Error al asignar el plan.",
+                                  );
+                                  return;
+                                }
 
-                        componentes.forEach((item) => {
-                          nuevaConfiguracion[item.componente_id] = {
-                            componente_id: item.componente_id,
-                            fecha: "",
-                            horometro: "",
-                            cambiado: false,
-                            motivo: "",
-                          };
-                        });
+                                const plan = planesMantenimiento.find(
+                                  (item) =>
+                                    String(item.id) ===
+                                    String(planSeleccionado),
+                                );
 
-                        setConfigComponentes(nuevaConfiguracion);
-                        setPlanSeleccionado("");
+                                const responseComponentes = await fetch(
+                                  `http://localhost:3000/planes-mantenimiento/${planSeleccionado}/componentes`,
+                                );
 
-                        setMensajeConfiguracion(
-                          `Plan ${plan?.nombre || ""} asignado correctamente al interno ${configInterno}.`,
-                        );
-                      } catch (error) {
-                        console.error(error);
-                        setMensajeConfiguracion(
-                          "Error de conexión con el servidor.",
-                        );
-                      }
-                    }}
-                  >
-                    Asignar plan
-                  </button>
-                )}
+                                const componentes =
+                                  await responseComponentes.json();
+
+                                if (!responseComponentes.ok) {
+                                  setMensajeConfiguracion(
+                                    "El plan se asignó, pero hubo un error al cargar sus componentes.",
+                                  );
+                                  return;
+                                }
+
+                                setConfigPlan(String(planSeleccionado));
+                                setConfigPlanNombre(plan?.nombre || "");
+                                setComponentesConfig(componentes);
+
+                                const nuevaConfiguracion = {};
+
+                                componentes.forEach((item) => {
+                                  nuevaConfiguracion[item.componente_id] = {
+                                    componente_id: item.componente_id,
+                                    fecha: "",
+                                    horometro: "",
+                                    cambiado: false,
+                                    motivo: "",
+                                  };
+                                });
+
+                                setConfigComponentes(nuevaConfiguracion);
+                                setPlanSeleccionado("");
+
+                                setMensajeConfiguracion(
+                                  `Plan ${plan?.nombre || ""} asignado correctamente al interno ${configInterno}.`,
+                                );
+                              } catch (error) {
+                                console.error(error);
+
+                                setMensajeConfiguracion(
+                                  "Error de conexión con el servidor.",
+                                );
+                              }
+                            }}
+                          >
+                            {configPlan && editandoPlan
+                              ? "Confirmar cambio"
+                              : "Asignar plan"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {configPlan && componentesConfig.length > 0 && (
@@ -4744,225 +4852,307 @@ function App() {
                 <h3>{configPlanNombre}</h3>
 
                 {componentesServiceMotor.length > 0 && (
-                  <div className="mantenimiento-card">
-                    <h4>Service de motor</h4>
+                  <div className="config-service-motor">
+                    <div className="config-service-motor-header">
+                      <div>
+                        <span className="config-service-motor-etiqueta">
+                          SERVICE PRINCIPAL
+                        </span>
 
-                    <p>
-                      <strong>Frecuencia:</strong> 300 hs
-                    </p>
+                        <h3>Service de motor</h3>
+                      </div>
 
-                    <div className="service-componentes">
-                      <strong>Incluye:</strong>
+                      <span className="config-service-motor-badge">
+                        CADA 300 HS
+                      </span>
+                    </div>
 
-                      <ul>
+                    <div className="config-service-motor-body">
+                      <span className="config-service-motor-subtitulo">
+                        COMPONENTES INCLUIDOS
+                      </span>
+
+                      <div className="config-service-motor-componentes">
                         {componentesServiceMotor.map((item) => (
-                          <li key={item.componente_id}>
-                            {item.nombre}
+                          <div
+                            className="config-service-motor-item"
+                            key={item.componente_id}
+                          >
+                            <div>
+                              <strong>{item.nombre}</strong>
 
-                            {item.codigo && <> — {item.codigo}</>}
+                              {item.codigo && <span>{item.codigo}</span>}
+                            </div>
 
                             {item.cantidad && (
-                              <>
-                                {" "}
-                                — {item.cantidad} {item.unidad}
-                              </>
+                              <small>
+                                {item.cantidad} {item.unidad || ""}
+                              </small>
                             )}
-                          </li>
+                          </div>
                         ))}
-                      </ul>
-                    </div>
-                    <label>
-                      Última fecha
-                      <input
-                        type="date"
-                        value={configServiceMotor.fecha || ""}
-                        onChange={(e) =>
-                          cambiarFechaServiceMotor(e.target.value)
-                        }
-                      />
-                    </label>
+                      </div>
 
-                    <label>
-                      Último horómetro
-                      <input
-                        type="number"
-                        value={configServiceMotor.horometro || ""}
-                        onChange={(e) =>
-                          cambiarHorometroServiceMotor(e.target.value)
-                        }
-                      />
-                    </label>
+                      <div className="config-service-motor-registro">
+                        <div className="config-service-motor-campo">
+                          <span>Última fecha</span>
+
+                          <input
+                            type="date"
+                            value={configServiceMotor.fecha || ""}
+                            onChange={(e) =>
+                              cambiarFechaServiceMotor(e.target.value)
+                            }
+                          />
+                        </div>
+
+                        <div className="config-service-motor-campo">
+                          <span>Último horómetro</span>
+
+                          <input
+                            className="config-service-horometro-input"
+                            type="number"
+                            placeholder="Ej: 18751"
+                            value={configServiceMotor.horometro || ""}
+                            onChange={(e) =>
+                              cambiarHorometroServiceMotor(e.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                <div className="mantenimientos-grid">
-                  {componentesConfig
-                    .filter((item) => {
-                      const esOpcional =
-                        item.opcional === true ||
-                        item.opcional === "true" ||
-                        item.opcional === 1;
+                <div className="config-otros-mantenimientos">
+                  <div className="config-otros-titulo">
+                    <div>
+                      <span>CONFIGURACIÓN INDIVIDUAL</span>
+                      <h3>Otros mantenimientos</h3>
+                    </div>
 
-                      const esServiceMotor =
-                        !esOpcional && Number(item.frecuencia_horas) === 300;
+                    <span className="config-otros-contador">
+                      {
+                        componentesConfig.filter((item) => {
+                          const esOpcional =
+                            item.opcional === true ||
+                            item.opcional === "true" ||
+                            item.opcional === 1;
 
-                      return !esServiceMotor;
-                    })
-                    .map((item) => {
-                      const config = configComponentes[item.componente_id] || {
-                        fecha: "",
-                        horometro: "",
-                        cambiado: false,
-                        motivo: "",
-                      };
+                          const esServiceMotor =
+                            !esOpcional &&
+                            Number(item.frecuencia_horas) === 300;
 
-                      // acá continúa exactamente tu código actual
+                          return !esServiceMotor;
+                        }).length
+                      }{" "}
+                      COMPONENTES
+                    </span>
+                  </div>
 
-                      return (
-                        <div
-                          className="mantenimiento-card"
-                          key={item.componente_id}
-                        >
-                          <h4>{item.nombre}</h4>
+                  <div className="config-otros-grid">
+                    {componentesConfig
+                      .filter((item) => {
+                        const esOpcional =
+                          item.opcional === true ||
+                          item.opcional === "true" ||
+                          item.opcional === 1;
 
-                          {item.codigo && (
-                            <p>
-                              <strong>Código:</strong> {item.codigo}
-                            </p>
-                          )}
+                        const esServiceMotor =
+                          !esOpcional && Number(item.frecuencia_horas) === 300;
 
-                          <p>
-                            <strong>Frecuencia:</strong> {item.frecuencia_horas}{" "}
-                            hs
-                          </p>
+                        return !esServiceMotor;
+                      })
+                      .map((item) => {
+                        const config = configComponentes[
+                          item.componente_id
+                        ] || {
+                          fecha: "",
+                          horometro: "",
+                          cambiado: false,
+                          motivo: "",
+                        };
 
-                          {item.cantidad && (
-                            <p>
-                              <strong>Cantidad:</strong> {item.cantidad}{" "}
-                              {item.unidad || ""}
-                            </p>
-                          )}
+                        const esOpcional =
+                          item.opcional === true ||
+                          item.opcional === "true" ||
+                          item.opcional === 1;
 
-                          {item.opcional ? (
-                            <>
-                              <p>
-                                <strong>Opcional</strong>
-                              </p>
+                        return (
+                          <div
+                            className={`config-componente-card ${
+                              esOpcional ? "opcional" : ""
+                            }`}
+                            key={item.componente_id}
+                          >
+                            <div className="config-componente-header">
+                              <div>
+                                <h4>{item.nombre}</h4>
 
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={config.cambiado}
-                                  onChange={(e) =>
-                                    setConfigComponentes((anterior) => ({
-                                      ...anterior,
+                                {item.codigo && <span>{item.codigo}</span>}
+                              </div>
 
-                                      [item.componente_id]: {
-                                        ...anterior[item.componente_id],
-                                        componente_id: item.componente_id,
-                                        cambiado: e.target.checked,
-                                        motivo: e.target.checked
-                                          ? anterior[item.componente_id]
-                                              ?.motivo || ""
-                                          : "",
-                                      },
-                                    }))
-                                  }
-                                />
-                                Registrar cambio
-                              </label>
-
-                              {config.cambiado && (
-                                <select
-                                  value={config.motivo}
-                                  onChange={(e) =>
-                                    setConfigComponentes((anterior) => ({
-                                      ...anterior,
-
-                                      [item.componente_id]: {
-                                        ...anterior[item.componente_id],
-                                        motivo: e.target.value,
-                                      },
-                                    }))
-                                  }
-                                >
-                                  <option value="">
-                                    Seleccionar motivo...
-                                  </option>
-
-                                  <option value="Por frecuencia">
-                                    Por frecuencia
-                                  </option>
-
-                                  <option value="Sucio">Sucio</option>
-
-                                  <option value="Dañado">Dañado</option>
-
-                                  <option value="Decisión jefe de mecánicos">
-                                    Decisión jefe de mecánicos
-                                  </option>
-
-                                  <option value="Otro">Otro</option>
-                                </select>
+                              {esOpcional ? (
+                                <span className="config-componente-badge opcional">
+                                  OPCIONAL
+                                </span>
+                              ) : (
+                                <span className="config-componente-badge">
+                                  {item.frecuencia_horas} HS
+                                </span>
                               )}
-                            </>
-                          ) : (
-                            <>
-                              <label>
-                                Última fecha
-                                <input
-                                  type="date"
-                                  value={config.fecha}
-                                  onChange={(e) =>
-                                    setConfigComponentes((anterior) => ({
-                                      ...anterior,
+                            </div>
 
-                                      [item.componente_id]: {
-                                        ...anterior[item.componente_id],
-                                        componente_id: item.componente_id,
-                                        fecha: e.target.value,
-                                      },
-                                    }))
-                                  }
-                                />
-                              </label>
+                            <div className="config-componente-body">
+                              {item.cantidad && (
+                                <div className="config-componente-info">
+                                  <span>Cantidad</span>
 
-                              <label>
-                                Último horómetro
-                                <input
-                                  type="number"
-                                  value={config.horometro}
-                                  onChange={(e) =>
-                                    setConfigComponentes((anterior) => ({
-                                      ...anterior,
+                                  <strong>
+                                    {item.cantidad} {item.unidad || ""}
+                                  </strong>
+                                </div>
+                              )}
 
-                                      [item.componente_id]: {
-                                        ...anterior[item.componente_id],
-                                        componente_id: item.componente_id,
-                                        horometro: e.target.value,
-                                      },
-                                    }))
-                                  }
-                                />
-                              </label>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
+                              {esOpcional ? (
+                                <div className="config-opcional-control">
+                                  <label className="config-opcional-check">
+                                    <input
+                                      type="checkbox"
+                                      checked={config.cambiado}
+                                      onChange={(e) =>
+                                        setConfigComponentes((anterior) => ({
+                                          ...anterior,
+
+                                          [item.componente_id]: {
+                                            ...anterior[item.componente_id],
+                                            componente_id: item.componente_id,
+                                            cambiado: e.target.checked,
+                                            motivo: e.target.checked
+                                              ? anterior[item.componente_id]
+                                                  ?.motivo || ""
+                                              : "",
+                                          },
+                                        }))
+                                      }
+                                    />
+
+                                    <span>Registrar cambio</span>
+                                  </label>
+
+                                  {config.cambiado && (
+                                    <div className="config-opcional-motivo">
+                                      <span>Motivo del cambio</span>
+
+                                      <select
+                                        value={config.motivo}
+                                        onChange={(e) =>
+                                          setConfigComponentes((anterior) => ({
+                                            ...anterior,
+
+                                            [item.componente_id]: {
+                                              ...anterior[item.componente_id],
+                                              motivo: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                      >
+                                        <option value="">
+                                          Seleccionar motivo...
+                                        </option>
+
+                                        <option value="Por frecuencia">
+                                          Por frecuencia
+                                        </option>
+
+                                        <option value="Sucio">Sucio</option>
+
+                                        <option value="Dañado">Dañado</option>
+
+                                        <option value="Decisión jefe de mecánicos">
+                                          Decisión jefe de mecánicos
+                                        </option>
+
+                                        <option value="Otro">Otro</option>
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="config-componente-registro">
+                                  <div className="config-componente-campo">
+                                    <span>Última fecha</span>
+
+                                    <input
+                                      type="date"
+                                      value={config.fecha}
+                                      onChange={(e) =>
+                                        setConfigComponentes((anterior) => ({
+                                          ...anterior,
+
+                                          [item.componente_id]: {
+                                            ...anterior[item.componente_id],
+                                            componente_id: item.componente_id,
+                                            fecha: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="config-componente-campo">
+                                    <span>Último horómetro (hs)</span>
+
+                                    <input
+                                      type="number"
+                                      placeholder="Ej: 18751"
+                                      value={config.horometro}
+                                      onChange={(e) =>
+                                        setConfigComponentes((anterior) => ({
+                                          ...anterior,
+
+                                          [item.componente_id]: {
+                                            ...anterior[item.componente_id],
+                                            componente_id: item.componente_id,
+                                            horometro: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               </>
             )}
-            <button
-              type="button"
-              onClick={guardarConfiguracionMantenimiento}
-              disabled={!configInterno || !configPlan}
-            >
-              Guardar configuración
-            </button>
+            <div className="config-acciones-finales">
+              <div className="config-acciones-info">
+                <span className="config-acciones-icono">✓</span>
+
+                <div>
+                  <strong>Configuración de mantenimiento</strong>
+
+                  <p>Revisá los datos antes de guardar los cambios.</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="config-btn-guardar"
+                onClick={guardarConfiguracionMantenimiento}
+                disabled={!configInterno || !configPlan}
+              >
+                Guardar configuración
+              </button>
+            </div>
 
             {mensajeConfiguracion && (
-              <p className="mensaje">{mensajeConfiguracion}</p>
+              <div className="config-mensaje-final">{mensajeConfiguracion}</div>
             )}
           </main>
         )}

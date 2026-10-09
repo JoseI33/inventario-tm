@@ -4637,3 +4637,918 @@ header p {
   color: #64748b;
   font-size: 12px;
 }
+
+.config-buscador-equipo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.config-campo-label {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.config-buscador-equipo input {
+  width: 100%;
+  height: 45px;
+  padding: 0 12px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d7dee7;
+  border-radius: 9px;
+}
+
+.config-sugerencias-equipo {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+
+  z-index: 30;
+
+  overflow: hidden;
+
+  border: 1px solid #d7dee7;
+  border-radius: 9px;
+
+  background: white;
+
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.config-sugerencias-equipo button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+
+  width: 100%;
+  padding: 10px 12px;
+
+  border: none;
+  border-bottom: 1px solid #eef2f7;
+
+  background: white;
+  color: #1f3a5f;
+
+  text-align: left;
+  cursor: pointer;
+}
+
+.config-sugerencias-equipo button:last-child {
+  border-bottom: none;
+}
+
+.config-sugerencias-equipo button:hover {
+  background: #f1f5f9;
+}
+
+.config-sugerencias-equipo span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.config-dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin: 18px 0 22px;
+  padding: 22px 24px;
+
+  border-radius: 16px;
+  background: #1f3a5f;
+  color: white;
+}
+
+.config-dashboard-etiqueta {
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.config-dashboard-header h2 {
+  margin: 3px 0;
+  color: white;
+  font-size: 25px;
+}
+
+.config-dashboard-header p {
+  margin: 0;
+  color: #dbe4ef;
+  font-size: 13px;
+}
+
+.config-dashboard-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 55px;
+  height: 55px;
+
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+
+  font-size: 27px;
+}
+
+/* Panel equipo + plan */
+
+.config-equipo-panel {
+  overflow: visible;
+
+  margin-bottom: 22px;
+
+  border: 1px solid #e3e8ef;
+  border-radius: 16px;
+  background: white;
+
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.config-equipo-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 17px 22px;
+
+  border-radius: 16px 16px 0 0;
+  background: #1f3a5f;
+  color: white;
+}
+
+.config-equipo-panel-header span {
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.config-equipo-panel-header h3 {
+  margin: 3px 0 0;
+  color: white;
+  font-size: 17px;
+}
+
+.config-equipo-panel-header .config-plan-activo {
+  padding: 7px 11px;
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.config-equipo-panel-body {
+  padding: 22px;
+}
+
+.config-equipo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.config-equipo-estado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  height: 45px;
+  padding: 0 12px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.config-equipo-estado.seleccionado {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.config-equipo-estado strong {
+  font-size: 13px;
+}
+
+.config-equipo-estado p {
+  margin: 0;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .config-equipo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.config-plan-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.config-plan-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-plan-nombre {
+  display: flex;
+  align-items: center;
+
+  flex: 1;
+  min-width: 0;
+  height: 45px;
+
+  padding: 0 12px;
+  box-sizing: border-box;
+
+  border: 1px solid #d7dee7;
+  border-radius: 9px;
+
+  background: #f8fafc;
+  color: #1f3a5f;
+}
+
+.config-plan-nombre strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  font-size: 13px;
+}
+
+.config-plan-cambiar {
+  height: 45px;
+  padding: 0 13px;
+
+  border: none;
+  border-radius: 9px;
+
+  background: #1f3a5f;
+  color: white;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.config-plan-select {
+  width: 100%;
+  height: 45px;
+
+  padding: 0 12px;
+  box-sizing: border-box;
+
+  border: 1px solid #d7dee7;
+  border-radius: 9px;
+
+  background: white;
+}
+
+.config-buscador-equipo,
+.config-equipo-identificacion,
+.config-plan-campo {
+  display: grid;
+  grid-template-rows: 20px 45px;
+  gap: 7px;
+  align-self: start;
+}
+
+.config-buscador-equipo .config-campo-label,
+.config-equipo-identificacion .config-campo-label,
+.config-plan-campo .config-campo-label {
+  height: 20px;
+  line-height: 20px;
+  margin: 0;
+  padding: 0;
+
+  text-align: center;
+}
+
+.config-buscador-equipo > input,
+.config-equipo-identificacion > .config-equipo-estado {
+  width: 100%;
+  height: 45px;
+  min-height: 45px;
+
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+.config-plan-fila {
+  height: 45px;
+  margin: 0;
+}
+
+.config-service-motor {
+  overflow: hidden;
+  margin-top: 22px;
+
+  border: 1px solid #e3e8ef;
+  border-radius: 16px;
+  background: #fff;
+
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.config-service-motor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 17px 22px;
+
+  background: #1f3a5f;
+  color: #fff;
+}
+
+.config-service-motor-etiqueta {
+  display: block;
+
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.config-service-motor-header h3 {
+  margin: 3px 0 0;
+
+  color: #fff;
+  font-size: 17px;
+}
+
+.config-service-motor-badge {
+  padding: 7px 11px;
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.config-service-motor-body {
+  padding: 22px;
+}
+
+.config-service-motor-subtitulo {
+  display: block;
+  margin-bottom: 10px;
+
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+}
+
+.config-service-motor-componentes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+
+  margin-bottom: 20px;
+}
+
+.config-service-motor-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  min-height: 48px;
+  padding: 9px 12px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+
+  background: #f8fafc;
+}
+
+.config-service-motor-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.config-service-motor-item strong {
+  color: #334155;
+  font-size: 12px;
+}
+
+.config-service-motor-item > div > span {
+  color: #1f3a5f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.config-service-motor-item small {
+  flex-shrink: 0;
+
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.config-service-motor-registro {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+
+  padding-top: 18px;
+
+  border-top: 1px solid #eef2f7;
+}
+
+.config-service-motor-campo {
+  display: grid;
+  grid-template-rows: 20px 45px;
+  gap: 7px;
+}
+
+.config-service-motor-campo > span {
+  height: 20px;
+  line-height: 20px;
+
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.config-service-motor-campo > input,
+.config-service-motor-horas {
+  width: 100%;
+  height: 45px;
+
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.config-service-motor-campo > input,
+.config-service-motor-horas input {
+  height: 45px;
+
+  padding: 0 12px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d7dee7;
+  border-radius: 9px;
+
+  background: #fff;
+}
+
+@media (max-width: 900px) {
+  .config-service-motor-componentes,
+  .config-service-motor-registro {
+    grid-template-columns: 1fr;
+  }
+
+  /* Alineación exacta fecha / horómetro */
+.config-service-motor-horas {
+  position: relative;
+  width: 100%;
+  height: 45px;
+  margin: 0 !important;
+  padding: 0;
+}
+
+.config-service-motor-horas input {
+  display: block;
+
+  width: 100%;
+  height: 45px;
+
+  margin: 0 !important;
+  padding: 0 42px 0 12px;
+
+  box-sizing: border-box;
+}
+
+.config-service-motor-campo > input {
+  display: block;
+  margin: 0 !important;
+}
+}
+
+.config-otros-mantenimientos {
+  margin-top: 22px;
+
+  border: 1px solid #e3e8ef;
+  border-radius: 16px;
+  background: #fff;
+
+  overflow: hidden;
+
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.config-otros-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 17px 22px;
+
+  background: #1f3a5f;
+  color: white;
+}
+
+.config-otros-titulo > div > span {
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.config-otros-titulo h3 {
+  margin: 3px 0 0;
+
+  color: white;
+  font-size: 17px;
+}
+
+.config-otros-contador {
+  padding: 7px 11px;
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+
+  background: rgba(255, 255, 255, 0.1);
+
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.config-otros-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+
+  padding: 20px;
+}
+
+/* Card individual */
+
+.config-componente-card {
+  overflow: hidden;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+
+  background: white;
+}
+
+.config-componente-card.opcional {
+  border-color: #fed7aa;
+}
+
+.config-componente-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  min-height: 48px;
+  padding: 11px 14px;
+
+  border-bottom: 1px solid #eef2f7;
+
+  background: #f8fafc;
+}
+
+.config-componente-card.opcional
+  .config-componente-header {
+  background: #fff7ed;
+}
+
+.config-componente-header h4 {
+  margin: 0;
+
+  color: #334155;
+  font-size: 13px;
+}
+
+.config-componente-header > div > span {
+  display: block;
+  margin-top: 2px;
+
+  color: #64748b;
+  font-size: 11px;
+}
+
+.config-componente-badge {
+  flex-shrink: 0;
+
+  padding: 5px 8px;
+
+  border-radius: 15px;
+
+  background: #e8f0fa;
+  color: #1f3a5f;
+
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.config-componente-badge.opcional {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+/* Contenido */
+
+.config-componente-body {
+  padding: 14px;
+}
+
+.config-componente-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 13px;
+  padding-bottom: 10px;
+
+  border-bottom: 1px solid #eef2f7;
+}
+
+.config-componente-info span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.config-componente-info strong {
+  color: #334155;
+  font-size: 11px;
+}
+
+/* Fecha + horómetro */
+
+.config-componente-registro {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.config-componente-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-componente-campo > span {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.config-componente-campo input {
+  width: 100%;
+  height: 40px;
+
+  margin: 0 !important;
+  padding: 0 10px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d7dee7;
+  border-radius: 8px;
+
+  background: white;
+}
+
+/* Opcionales */
+
+.config-opcional-control {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-opcional-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  min-height: 40px;
+  padding: 0 11px;
+
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+
+  background: #fff7ed;
+
+  cursor: pointer;
+}
+
+.config-opcional-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.config-opcional-check span {
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.config-opcional-motivo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-opcional-motivo > span {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.config-opcional-motivo select {
+  width: 100%;
+  height: 40px;
+
+  padding: 0 10px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d7dee7;
+  border-radius: 8px;
+
+  background: white;
+}
+
+@media (max-width: 900px) {
+  .config-otros-grid,
+  .config-componente-registro {
+    grid-template-columns: 1fr;
+  }
+}
+
+.config-acciones-finales {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  margin-top: 22px;
+  padding: 18px 20px;
+
+  border: 1px solid #e3e8ef;
+  border-radius: 14px;
+
+  background: #f8fafc;
+
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+}
+
+.config-acciones-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-acciones-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #dcfce7;
+  color: #166534;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.config-acciones-info strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.config-acciones-info p {
+  margin: 3px 0 0;
+
+  color: #64748b;
+  font-size: 11px;
+}
+
+.config-btn-guardar {
+  min-width: 190px;
+  height: 44px;
+
+  padding: 0 20px;
+
+  border: none;
+  border-radius: 9px;
+
+  background: #1f3a5f;
+  color: white;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.config-btn-guardar:hover:not(:disabled) {
+  background: #172f4e;
+}
+
+.config-btn-guardar:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.config-mensaje-final {
+  margin-top: 12px;
+  padding: 11px 14px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 9px;
+
+  background: #f0fdf4;
+  color: #166534;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .config-acciones-finales {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .config-btn-guardar {
+    width: 100%;
+  }
+}
+
+.config-plan-seleccion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  width: 100%;
+  height: 45px;
+}
+
+.config-plan-seleccion .config-plan-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-btn-asignar-plan {
+  flex-shrink: 0;
+
+  height: 45px;
+  padding: 0 14px;
+
+  border: none;
+  border-radius: 9px;
+
+  background: #1f3a5f;
+  color: white;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.config-btn-asignar-plan:hover {
+  background: #172f4e;
+}
