@@ -44,6 +44,7 @@ function App() {
     new Date().toISOString().split("T")[0],
   );
   const [mensajeFlota, setMensajeFlota] = useState("");
+  const [lecturasFlota, setLecturasFlota] = useState([]);
 
   // INFORMES TECNICOS
   const [equipoInforme, setEquipoInforme] = useState(null);
@@ -521,6 +522,8 @@ function App() {
   const guardarNuevoEquipo = async (e) => {
     e.preventDefault();
 
+    console.log("NUEVO EQUIPO ENVIADO:", JSON.stringify(nuevoEquipo, null, 2));
+
     setMensajeNuevoEquipo("");
 
     try {
@@ -533,6 +536,8 @@ function App() {
       });
 
       const data = await response.json();
+
+      console.log("RESPUESTA POST EQUIPO:", response.status, data);
 
       if (!response.ok) {
         setMensajeNuevoEquipo(data.error || "No se pudo crear el equipo.");
@@ -1300,8 +1305,6 @@ function App() {
       }
 
       alert(`Informe ${datos.informe.numero_ot} guardado correctamente`);
-
-      console.log("Informe guardado:", datos.informe);
     } catch (error) {
       console.error("Error guardando informe:", error);
 
@@ -1656,6 +1659,32 @@ function App() {
         )
       : [];
 
+  const cargarLecturasFlota = async (equipoId) => {
+    if (!equipoId) {
+      setLecturasFlota([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/flota/${equipoId}/lecturas`,
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLecturasFlota([]);
+        return;
+      }
+
+      setLecturasFlota(data);
+    } catch (error) {
+      console.error("Error al consultar historial de flota:", error);
+
+      setLecturasFlota([]);
+    }
+  };
+
   const vehiculoFlotaSeleccionado =
     coincidenciasFlota.length === 1
       ? coincidenciasFlota[0]
@@ -1713,6 +1742,8 @@ function App() {
       );
 
       setKilometrajeFlota("");
+
+      await cargarLecturasFlota(vehiculoFlotaSeleccionado.id);
 
       setMensajeFlota(
         `✓ Lectura registrada: ${Number(data.kilometraje_actual).toLocaleString(
@@ -2911,7 +2942,6 @@ function App() {
                           key={pendiente.id}
                           className="fila-pendiente-historial"
                           onClick={() => {
-                            console.log("Pendiente seleccionado:", pendiente);
                             setPendienteDetalle(pendiente);
                           }}
                         >
@@ -4240,38 +4270,22 @@ function App() {
                     />
                   </label>
                 ) : (
-                  <div className="flota-campo">
-                    <span className="flota-campo-label">Patente</span>
-
+                  <label>
+                    Patente *
                     <input
                       type="text"
                       placeholder="Ej: JVM 256"
-                      value={patenteFlota}
+                      value={nuevoEquipo.patente}
                       onChange={(e) =>
-                        setPatenteFlota(e.target.value.toUpperCase())
+                        setNuevoEquipo({
+                          ...nuevoEquipo,
+                          patente: e.target.value.toUpperCase(),
+                        })
                       }
+                      required
                     />
-                  </div>
+                  </label>
                 )}
-
-                {patenteFlota.trim().length >= 2 &&
-                  coincidenciasFlota.length > 1 && (
-                    <div className="flota-sugerencias">
-                      {coincidenciasFlota.slice(0, 6).map((vehiculo) => (
-                        <button
-                          key={vehiculo.id}
-                          type="button"
-                          onClick={() => setPatenteFlota(vehiculo.patente)}
-                        >
-                          <strong>{vehiculo.patente}</strong>
-
-                          <span>
-                            {vehiculo.marca || "-"} {vehiculo.modelo || ""}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
 
                 <label>
                   Tipo de equipo *
@@ -5212,9 +5226,27 @@ function App() {
                       type="text"
                       placeholder="Ej: JVM 256"
                       value={patenteFlota}
-                      onChange={(e) =>
-                        setPatenteFlota(e.target.value.toUpperCase())
-                      }
+                      onChange={(e) => {
+                        const valor = e.target.value.toUpperCase();
+
+                        setPatenteFlota(valor);
+
+                        const coincidencias = vehiculosFlota.filter(
+                          (vehiculo) =>
+                            normalizarPatente(vehiculo.patente).includes(
+                              normalizarPatente(valor),
+                            ),
+                        );
+
+                        if (
+                          valor.trim().length >= 2 &&
+                          coincidencias.length === 1
+                        ) {
+                          cargarLecturasFlota(coincidencias[0].id);
+                        } else {
+                          setLecturasFlota([]);
+                        }
+                      }}
                     />
                   </div>
 
@@ -5300,6 +5332,67 @@ function App() {
               </div>
             </div>
           </main>
+        )}
+
+        {vehiculoFlotaSeleccionado && (
+          <div className="flota-historial">
+            <div className="flota-historial-header">
+              <div>
+                <span>SEGUIMIENTO DEL VEHÍCULO</span>
+                <h3>Historial de kilometraje</h3>
+              </div>
+
+              <span className="flota-historial-badge">
+                {lecturasFlota.length} LECTURAS
+              </span>
+            </div>
+
+            <div className="flota-historial-body">
+              {lecturasFlota.length === 0 ? (
+                <div className="flota-historial-vacio">
+                  No hay lecturas registradas para este vehículo.
+                </div>
+              ) : (
+                <div className="flota-historial-tabla">
+                  <div className="flota-historial-fila encabezado">
+                    <span>Fecha</span>
+                    <span>Kilometraje</span>
+                    <span>Recorrido</span>
+                  </div>
+
+                  {lecturasFlota.map((lectura, index) => {
+                    const lecturaAnterior = lecturasFlota[index + 1];
+
+                    const recorrido = lecturaAnterior
+                      ? Number(lectura.kilometraje) -
+                        Number(lecturaAnterior.kilometraje)
+                      : null;
+
+                    return (
+                      <div className="flota-historial-fila" key={lectura.id}>
+                        <span>
+                          {new Date(
+                            `${String(lectura.fecha).slice(0, 10)}T00:00:00`,
+                          ).toLocaleDateString("es-AR")}
+                        </span>
+
+                        <strong>
+                          {Number(lectura.kilometraje).toLocaleString("es-AR")}{" "}
+                          km
+                        </strong>
+
+                        <span className="flota-recorrido">
+                          {recorrido !== null
+                            ? `+${recorrido.toLocaleString("es-AR")} km`
+                            : "—"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {modulo === "equipos" && (

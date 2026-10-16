@@ -2506,6 +2506,36 @@ app.get("/pendientes-finalizados", async (req, res) => {
   }
 });
 
+app.get("/flota/:id/lecturas", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+        SELECT
+          id,
+          equipo_id,
+          fecha,
+          kilometraje,
+          observaciones,
+          creado_en
+        FROM flota_lecturas
+        WHERE equipo_id = $1
+        ORDER BY fecha DESC, id DESC
+      `,
+      [id]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error al obtener lecturas de flota:", error);
+
+    res.status(500).json({
+      error: "Error al obtener el historial de kilometraje.",
+    });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Servidor funcionando en http://localhost:3000");
 });
