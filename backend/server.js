@@ -907,6 +907,190 @@ app.post("/flota/:id/lecturas", async (req, res) => {
   }
 });
 
+app.post("/flota/:id/mantenimientos", async (req, res) => {
+  const { id } = req.params;
+
+  const {
+    tipo,
+    fecha,
+    kilometraje,
+    frecuencia_km,
+    observaciones,
+  } = req.body;
+
+  try {
+    if (
+      !tipo ||
+      !fecha ||
+      kilometraje === "" ||
+      kilometraje === null ||
+      kilometraje === undefined
+    ) {
+      return res.status(400).json({
+        error: "Completá tipo, fecha y kilometraje.",
+      });
+    }
+
+    const kilometrajeNumero = Number(kilometraje);
+    const frecuenciaNumero = Number(frecuencia_km);
+
+    if (
+      !Number.isInteger(kilometrajeNumero) ||
+      kilometrajeNumero < 0
+    ) {
+      return res.status(400).json({
+        error: "El kilometraje no es válido.",
+      });
+    }
+
+    if (
+      !Number.isInteger(frecuenciaNumero) ||
+      frecuenciaNumero <= 0
+    ) {
+      return res.status(400).json({
+        error: "La frecuencia de mantenimiento no es válida.",
+      });
+    }
+
+    const equipo = await pool.query(
+      `
+      SELECT id, categoria, patente
+      FROM equipos
+      WHERE id = $1
+      `,
+      [id],
+    );
+
+    if (equipo.rows.length === 0) {
+      return res.status(404).json({
+        error: "Vehículo no encontrado.",
+      });
+    }
+
+    if (equipo.rows[0].categoria !== "FLOTA") {
+      return res.status(400).json({
+        error: "El equipo seleccionado no pertenece a Flota.",
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      INSERT INTO flota_mantenimientos (
+        equipo_id,
+        tipo,
+        fecha,
+        kilometraje,
+        frecuencia_km,
+        observaciones
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+      `,
+      [
+        id,
+        tipo,
+        fecha,
+        kilometrajeNumero,
+        frecuenciaNumero,
+        observaciones?.trim() || null,
+      ],
+    );
+
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error(
+      "Error al registrar mantenimiento de flota:",
+      error,
+    );
+
+    res.status(500).json({
+      error: "Error al registrar el mantenimiento.",
+    });
+  }
+});
+
+app.put("/flota/mantenimientos/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const {
+    fecha,
+    kilometraje,
+    frecuencia_km,
+    observaciones,
+  } = req.body;
+
+  try {
+    if (
+      !fecha ||
+      kilometraje === "" ||
+      kilometraje === null ||
+      kilometraje === undefined
+    ) {
+      return res.status(400).json({
+        error: "Completá fecha y kilometraje.",
+      });
+    }
+
+    const kilometrajeNumero = Number(kilometraje);
+    const frecuenciaNumero = Number(frecuencia_km);
+
+    if (
+      !Number.isInteger(kilometrajeNumero) ||
+      kilometrajeNumero < 0
+    ) {
+      return res.status(400).json({
+        error: "El kilometraje no es válido.",
+      });
+    }
+
+    if (
+      !Number.isInteger(frecuenciaNumero) ||
+      frecuenciaNumero <= 0
+    ) {
+      return res.status(400).json({
+        error: "La frecuencia no es válida.",
+      });
+    }
+
+    const resultado = await pool.query(
+      `
+      UPDATE flota_mantenimientos
+      SET
+        fecha = $1,
+        kilometraje = $2,
+        frecuencia_km = $3,
+        observaciones = $4
+      WHERE id = $5
+      RETURNING *
+      `,
+      [
+        fecha,
+        kilometrajeNumero,
+        frecuenciaNumero,
+        observaciones?.trim() || null,
+        id,
+      ],
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({
+        error: "Mantenimiento no encontrado.",
+      });
+    }
+
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error(
+      "Error al modificar mantenimiento de flota:",
+      error,
+    );
+
+    res.status(500).json({
+      error: "Error al modificar el mantenimiento.",
+    });
+  }
+});
+
 app.post("/contratos", async (req, res) => {
   const {
     interno,
@@ -2532,6 +2716,41 @@ app.get("/flota/:id/lecturas", async (req, res) => {
 
     res.status(500).json({
       error: "Error al obtener el historial de kilometraje.",
+    });
+  }
+});
+
+app.get("/flota/:id/mantenimientos", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        id,
+        equipo_id,
+        tipo,
+        fecha,
+        kilometraje,
+        frecuencia_km,
+        observaciones,
+        creado_en
+      FROM flota_mantenimientos
+      WHERE equipo_id = $1
+      ORDER BY fecha DESC, kilometraje DESC, id DESC
+      `,
+      [id],
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(
+      "Error al obtener mantenimientos de flota:",
+      error,
+    );
+
+    res.status(500).json({
+      error: "Error al obtener los mantenimientos.",
     });
   }
 });

@@ -46,6 +46,27 @@ function App() {
   const [mensajeFlota, setMensajeFlota] = useState("");
   const [lecturasFlota, setLecturasFlota] = useState([]);
 
+  const [editandoServiceFlota, setEditandoServiceFlota] = useState(false);
+
+  const [serviceFlotaEdicion, setServiceFlotaEdicion] = useState({
+    fecha: "",
+    kilometraje: "",
+    frecuencia_km: "",
+    observaciones: "",
+  });
+
+  // MANTENIMIENTOS DE FLOTA
+  const [mantenimientosFlota, setMantenimientosFlota] = useState([]);
+
+  const [serviceFlota, setServiceFlota] = useState({
+    fecha: "",
+    kilometraje: "",
+    frecuencia_km: 10000,
+    observaciones: "",
+  });
+
+  const [mensajeServiceFlota, setMensajeServiceFlota] = useState("");
+
   // INFORMES TECNICOS
   const [equipoInforme, setEquipoInforme] = useState(null);
   const [busquedaInternoInforme, setBusquedaInternoInforme] = useState("");
@@ -1685,6 +1706,27 @@ function App() {
     }
   };
 
+  const cargarMantenimientosFlota = async (equipoId) => {
+    if (!equipoId) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/flota/${equipoId}/mantenimientos`,
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Error al cargar mantenimientos:", data);
+        return;
+      }
+
+      setMantenimientosFlota(data);
+    } catch (error) {
+      console.error("Error al consultar mantenimientos de flota:", error);
+    }
+  };
+
   const vehiculoFlotaSeleccionado =
     coincidenciasFlota.length === 1
       ? coincidenciasFlota[0]
@@ -1693,6 +1735,36 @@ function App() {
             normalizarPatente(vehiculo.patente) ===
             normalizarPatente(patenteFlota),
         );
+
+  const ultimoServiceMotor = mantenimientosFlota.find(
+    (mantenimiento) => mantenimiento.tipo === "SERVICE_MOTOR",
+  );
+
+  const kilometrajeActualFlota = Number(
+    vehiculoFlotaSeleccionado?.kilometraje_actual || 0,
+  );
+
+  const proximoServiceMotor = ultimoServiceMotor
+    ? Number(ultimoServiceMotor.kilometraje) +
+      Number(ultimoServiceMotor.frecuencia_km)
+    : null;
+
+  const kmRestantesService =
+    proximoServiceMotor !== null
+      ? proximoServiceMotor - kilometrajeActualFlota
+      : null;
+
+  let estadoServiceFlota = "SIN REGISTRO";
+
+  if (kmRestantesService !== null) {
+    if (kmRestantesService <= 0) {
+      estadoServiceFlota = "VENCIDO";
+    } else if (kmRestantesService <= 1000) {
+      estadoServiceFlota = "PRÓXIMO";
+    } else {
+      estadoServiceFlota = "EN TIEMPO";
+    }
+  }
 
   const guardarLecturaFlota = async () => {
     if (!vehiculoFlotaSeleccionado) {
@@ -1843,6 +1915,132 @@ function App() {
   const equipoConfigSeleccionado = equiposMaquinaria.find(
     (equipo) => String(equipo.interno) === String(configInterno),
   );
+
+  const guardarServiceFlota = async () => {
+    if (!vehiculoFlotaSeleccionado) {
+      setMensajeServiceFlota("Seleccioná un vehículo.");
+      return;
+    }
+
+    if (!serviceFlota.fecha || serviceFlota.kilometraje === "") {
+      setMensajeServiceFlota(
+        "Completá fecha y kilometraje del último service.",
+      );
+      return;
+    }
+
+    try {
+      setMensajeServiceFlota("");
+
+      const response = await fetch(
+        `http://localhost:3000/flota/${vehiculoFlotaSeleccionado.id}/mantenimientos`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tipo: "SERVICE_MOTOR",
+            fecha: serviceFlota.fecha,
+            kilometraje: Number(serviceFlota.kilometraje),
+            frecuencia_km: Number(serviceFlota.frecuencia_km),
+            observaciones: serviceFlota.observaciones,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeServiceFlota(
+          data.error || "No se pudo registrar el service.",
+        );
+        return;
+      }
+
+      await cargarMantenimientosFlota(vehiculoFlotaSeleccionado.id);
+
+      setServiceFlota({
+        fecha: "",
+        kilometraje: "",
+        frecuencia_km: 10000,
+        observaciones: "",
+      });
+
+      setMensajeServiceFlota("✓ Service registrado correctamente.");
+    } catch (error) {
+      console.error(error);
+
+      setMensajeServiceFlota("Error de conexión con el servidor.");
+    }
+  };
+
+  const iniciarEdicionServiceFlota = () => {
+    if (!ultimoServiceMotor) return;
+
+    setServiceFlotaEdicion({
+      fecha: String(ultimoServiceMotor.fecha).slice(0, 10),
+      kilometraje: ultimoServiceMotor.kilometraje,
+      frecuencia_km: ultimoServiceMotor.frecuencia_km,
+      observaciones: ultimoServiceMotor.observaciones || "",
+    });
+
+    setMensajeServiceFlota("");
+    setEditandoServiceFlota(true);
+  };
+
+  const cancelarEdicionServiceFlota = () => {
+    setEditandoServiceFlota(false);
+    setMensajeServiceFlota("");
+  };
+
+  const guardarEdicionServiceFlota = async () => {
+    if (!ultimoServiceMotor) return;
+
+    if (!serviceFlotaEdicion.fecha || serviceFlotaEdicion.kilometraje === "") {
+      setMensajeServiceFlota("Completá fecha y kilometraje del service.");
+      return;
+    }
+
+    try {
+      setMensajeServiceFlota("");
+
+      const response = await fetch(
+        `http://localhost:3000/flota/mantenimientos/${ultimoServiceMotor.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fecha: serviceFlotaEdicion.fecha,
+            kilometraje: Number(serviceFlotaEdicion.kilometraje),
+            frecuencia_km: Number(serviceFlotaEdicion.frecuencia_km),
+            observaciones: serviceFlotaEdicion.observaciones,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMensajeServiceFlota(
+          data.error || "No se pudo modificar el service.",
+        );
+        return;
+      }
+
+      await cargarMantenimientosFlota(vehiculoFlotaSeleccionado.id);
+
+      setEditandoServiceFlota(false);
+
+      setMensajeServiceFlota("✓ Service actualizado correctamente.");
+    } catch (error) {
+      console.error(error);
+
+      setMensajeServiceFlota("Error de conexión con el servidor.");
+    }
+  };
 
   return (
     <div className="app-layout">
@@ -5243,8 +5441,10 @@ function App() {
                           coincidencias.length === 1
                         ) {
                           cargarLecturasFlota(coincidencias[0].id);
+                          cargarMantenimientosFlota(coincidencias[0].id);
                         } else {
                           setLecturasFlota([]);
+                          setMantenimientosFlota([]);
                         }
                       }}
                     />
@@ -5331,6 +5531,308 @@ function App() {
                 {mensajeFlota && <p className="mensaje">{mensajeFlota}</p>}
               </div>
             </div>
+            {vehiculoFlotaSeleccionado && (
+              <div className="flota-service-panel">
+                <div className="flota-panel-header">
+                  <div>
+                    <span>MANTENIMIENTO PREVENTIVO</span>
+                    <h3>Service de motor</h3>
+                  </div>
+
+                  <span
+                    className={`flota-service-estado ${
+                      estadoServiceFlota === "EN TIEMPO"
+                        ? "en-tiempo"
+                        : estadoServiceFlota === "PRÓXIMO"
+                          ? "proximo"
+                          : estadoServiceFlota === "VENCIDO"
+                            ? "vencido"
+                            : "sin-registro"
+                    }`}
+                  >
+                    {estadoServiceFlota}
+                  </span>
+                </div>
+
+                {ultimoServiceMotor ? (
+                  <div className="flota-service-body">
+                    <div className="flota-service-metricas">
+                      <div className="flota-service-metrica">
+                        <span>KM ACTUAL</span>
+
+                        <strong>
+                          {kilometrajeActualFlota.toLocaleString("es-AR")}
+                          <small> km</small>
+                        </strong>
+                      </div>
+
+                      <div className="flota-service-metrica">
+                        <span>ÚLTIMO SERVICE</span>
+
+                        <strong>
+                          {Number(
+                            ultimoServiceMotor.kilometraje,
+                          ).toLocaleString("es-AR")}
+                          <small> km</small>
+                        </strong>
+                      </div>
+
+                      <div className="flota-service-metrica">
+                        <span>PRÓXIMO SERVICE</span>
+
+                        <strong>
+                          {Number(proximoServiceMotor).toLocaleString("es-AR")}
+                          <small> km</small>
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`flota-service-restante ${
+                        kmRestantesService <= 0
+                          ? "vencido"
+                          : kmRestantesService <= 1000
+                            ? "proximo"
+                            : "en-tiempo"
+                      }`}
+                    >
+                      <span>
+                        {kmRestantesService <= 0 ? "EXCEDIDO" : "FALTAN"}
+                      </span>
+
+                      <strong>
+                        {Math.abs(kmRestantesService).toLocaleString("es-AR")}{" "}
+                        km
+                      </strong>
+
+                      <small>
+                        {kmRestantesService <= 0
+                          ? "Service vencido"
+                          : "Para el próximo service"}
+                      </small>
+                    </div>
+
+                    <div className="flota-service-detalles">
+                      <div>
+                        <span>ÚLTIMA FECHA</span>
+
+                        <strong>
+                          {new Date(
+                            `${String(ultimoServiceMotor.fecha).slice(0, 10)}T00:00:00`,
+                          ).toLocaleDateString("es-AR")}
+                        </strong>
+                      </div>
+                      {!editandoServiceFlota ? (
+                        <div className="flota-service-editar">
+                          <button
+                            type="button"
+                            onClick={iniciarEdicionServiceFlota}
+                          >
+                            Editar service
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flota-service-edicion">
+                          <div className="flota-service-edicion-titulo">
+                            <div>
+                              <span>MODIFICAR REGISTRO</span>
+                              <strong>Editar último service</strong>
+                            </div>
+                          </div>
+
+                          <div className="flota-service-form">
+                            <label>
+                              Fecha *
+                              <input
+                                type="date"
+                                value={serviceFlotaEdicion.fecha}
+                                onChange={(e) =>
+                                  setServiceFlotaEdicion({
+                                    ...serviceFlotaEdicion,
+                                    fecha: e.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+
+                            <label>
+                              Kilometraje *
+                              <input
+                                type="number"
+                                min="0"
+                                value={serviceFlotaEdicion.kilometraje}
+                                onChange={(e) =>
+                                  setServiceFlotaEdicion({
+                                    ...serviceFlotaEdicion,
+                                    kilometraje: e.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+
+                            <label>
+                              Frecuencia
+                              <div className="flota-service-input-km">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={serviceFlotaEdicion.frecuencia_km}
+                                  onChange={(e) =>
+                                    setServiceFlotaEdicion({
+                                      ...serviceFlotaEdicion,
+                                      frecuencia_km: e.target.value,
+                                    })
+                                  }
+                                />
+
+                                <span>km</span>
+                              </div>
+                            </label>
+
+                            <label>
+                              Observaciones
+                              <input
+                                type="text"
+                                value={serviceFlotaEdicion.observaciones}
+                                onChange={(e) =>
+                                  setServiceFlotaEdicion({
+                                    ...serviceFlotaEdicion,
+                                    observaciones: e.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                          </div>
+
+                          <div className="flota-service-edicion-acciones">
+                            <button
+                              type="button"
+                              className="cancelar"
+                              onClick={cancelarEdicionServiceFlota}
+                            >
+                              Cancelar
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={guardarEdicionServiceFlota}
+                            >
+                              Guardar cambios
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <span>FRECUENCIA</span>
+
+                        <strong>
+                          {Number(
+                            ultimoServiceMotor.frecuencia_km,
+                          ).toLocaleString("es-AR")}{" "}
+                          km
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flota-service-body">
+                    <div className="flota-service-sin-registro">
+                      <span className="flota-service-icono">⚙️</span>
+
+                      <div>
+                        <strong>Sin service registrado</strong>
+                        <p>
+                          Cargá el último service realizado para comenzar el
+                          seguimiento preventivo.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flota-service-form">
+                      <label>
+                        Fecha del último service *
+                        <input
+                          type="date"
+                          value={serviceFlota.fecha}
+                          onChange={(e) =>
+                            setServiceFlota({
+                              ...serviceFlota,
+                              fecha: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        Kilometraje del service *
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Ej: 235000"
+                          value={serviceFlota.kilometraje}
+                          onChange={(e) =>
+                            setServiceFlota({
+                              ...serviceFlota,
+                              kilometraje: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        Frecuencia
+                        <div className="flota-service-input-km">
+                          <input
+                            type="number"
+                            min="1"
+                            value={serviceFlota.frecuencia_km}
+                            onChange={(e) =>
+                              setServiceFlota({
+                                ...serviceFlota,
+                                frecuencia_km: e.target.value,
+                              })
+                            }
+                          />
+
+                          <span>km</span>
+                        </div>
+                      </label>
+
+                      <label>
+                        Observaciones
+                        <input
+                          type="text"
+                          placeholder="Opcional"
+                          value={serviceFlota.observaciones}
+                          onChange={(e) =>
+                            setServiceFlota({
+                              ...serviceFlota,
+                              observaciones: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <div className="flota-service-acciones">
+                      <button
+                        type="button"
+                        onClick={guardarServiceFlota}
+                        disabled={
+                          !serviceFlota.fecha || !serviceFlota.kilometraje
+                        }
+                      >
+                        Registrar service
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {mensajeServiceFlota && (
+                  <p className="mensaje">{mensajeServiceFlota}</p>
+                )}
+              </div>
+            )}
           </main>
         )}
 
