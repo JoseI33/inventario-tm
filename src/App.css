@@ -6043,3 +6043,80 @@ header p {
 .flota-service-edicion-acciones .cancelar:hover {
   background: #f1f5f9;
 }
+
+/* =========================================================
+   FLOTA - OTROS MANTENIMIENTOS
+   ========================================================= */
+
+.flota-secundarios-panel {
+  margin-top: 24px;
+  background: #ffffff;
+  border: 1px solid #e4e9f0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.flota-mantenimiento-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 14px 18px 0;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.flota-mantenimiento-tabs button {
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.flota-mantenimiento-tabs button:hover {
+  color: #0f172a;
+}
+
+.flota-mantenimiento-tabs button.activo {
+  background: #ffffff;
+  border-bottom-color: #0f172a;
+  color: #0f172a;
+}
+
+.flota-secundarios-contenido {
+  padding: 22px 24px 24px;
+}
+
+.flota-secundarios-identificacion {
+  margin-bottom: 18px;
+}
+
+.flota-secundarios-identificacion span {
+  display: block;
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+}
+
+.flota-secundarios-identificacion strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+@media (max-width: 800px) {
+  .flota-mantenimiento-tabs {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .flota-secundarios-contenido {
+    padding: 18px;
+  }
+}

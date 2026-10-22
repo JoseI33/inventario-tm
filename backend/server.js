@@ -915,6 +915,7 @@ app.post("/flota/:id/mantenimientos", async (req, res) => {
     fecha,
     kilometraje,
     frecuencia_km,
+    codigo_repuesto,
     observaciones,
   } = req.body;
 
@@ -976,23 +977,25 @@ app.post("/flota/:id/mantenimientos", async (req, res) => {
     const resultado = await pool.query(
       `
       INSERT INTO flota_mantenimientos (
-        equipo_id,
-        tipo,
-        fecha,
-        kilometraje,
-        frecuencia_km,
-        observaciones
+  equipo_id,
+  tipo,
+  fecha,
+  kilometraje,
+  frecuencia_km,
+  codigo_repuesto,
+  observaciones
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
       `,
       [
         id,
-        tipo,
-        fecha,
-        kilometrajeNumero,
-        frecuenciaNumero,
-        observaciones?.trim() || null,
+  tipo,
+  fecha,
+  kilometrajeNumero,
+  frecuenciaNumero,
+  codigo_repuesto?.trim() || null,
+  observaciones?.trim() || null,
       ],
     );
 
@@ -1013,11 +1016,12 @@ app.put("/flota/mantenimientos/:id", async (req, res) => {
   const { id } = req.params;
 
   const {
-    fecha,
-    kilometraje,
-    frecuencia_km,
-    observaciones,
-  } = req.body;
+  fecha,
+  kilometraje,
+  frecuencia_km,
+  codigo_repuesto,
+  observaciones,
+} = req.body;
 
   try {
     if (
@@ -1059,16 +1063,18 @@ app.put("/flota/mantenimientos/:id", async (req, res) => {
         fecha = $1,
         kilometraje = $2,
         frecuencia_km = $3,
-        observaciones = $4
-      WHERE id = $5
+        codigo_repuesto = $4,
+        observaciones = $5
+      WHERE id = $6
       RETURNING *
       `,
       [
         fecha,
-        kilometrajeNumero,
-        frecuenciaNumero,
-        observaciones?.trim() || null,
-        id,
+    kilometrajeNumero,
+    frecuenciaNumero,
+    codigo_repuesto?.trim() || null,
+    observaciones?.trim() || null,
+    id,
       ],
     );
 
@@ -2733,6 +2739,7 @@ app.get("/flota/:id/mantenimientos", async (req, res) => {
         fecha,
         kilometraje,
         frecuencia_km,
+        codigo_repuesto,
         observaciones,
         creado_en
       FROM flota_mantenimientos
