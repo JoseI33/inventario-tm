@@ -111,6 +111,8 @@ function App() {
   const [editandoMantenimientoFlota, setEditandoMantenimientoFlota] =
     useState(false);
 
+  const [alertasFlota, setAlertasFlota] = useState([]);
+
   // INFORMES TECNICOS
   const [equipoInforme, setEquipoInforme] = useState(null);
   const [busquedaInternoInforme, setBusquedaInternoInforme] = useState("");
@@ -1771,6 +1773,23 @@ function App() {
     }
   };
 
+  const cargarAlertasFlota = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/flota/alertas");
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Error al cargar alertas:", data);
+        return;
+      }
+
+      setAlertasFlota(data);
+    } catch (error) {
+      console.error("Error al consultar alertas de flota:", error);
+    }
+  };
+
   const vehiculoFlotaSeleccionado =
     coincidenciasFlota.length === 1
       ? coincidenciasFlota[0]
@@ -1782,6 +1801,18 @@ function App() {
 
   const kilometrajeActualFlota = Number(
     vehiculoFlotaSeleccionado?.kilometraje_actual || 0,
+  );
+
+  const alertasFlotaVencidas = alertasFlota.filter(
+    (alerta) => alerta.estado === "VENCIDO",
+  );
+
+  const alertasFlotaProximas = alertasFlota.filter(
+    (alerta) => alerta.estado === "PRÓXIMO",
+  );
+
+  const alertasFlotaEnTiempo = alertasFlota.filter(
+    (alerta) => alerta.estado === "EN TIEMPO",
   );
 
   // Obtener el último service de motor y la última distribución
@@ -2343,7 +2374,10 @@ function App() {
 
           <button
             className={`sidebar-item ${modulo === "flota" ? "activo" : ""}`}
-            onClick={() => setModulo("flota")}
+            onClick={() => {
+              setModulo("flota");
+              cargarAlertasFlota();
+            }}
           >
             🚗 Flota
           </button>
@@ -5630,17 +5664,96 @@ function App() {
                 <small>Registrados</small>
               </div>
 
-              <div className="flota-resumen-card">
-                <span>LECTURAS</span>
-                <strong>Semanal</strong>
-                <small>Control de kilometraje</small>
+              <div className="flota-resumen-card flota-resumen-proximo">
+                <span>PRÓXIMOS</span>
+                <strong>{alertasFlotaProximas.length}</strong>
+                <small>Mantenimientos próximos</small>
               </div>
 
-              <div className="flota-resumen-card">
-                <span>MANTENIMIENTO</span>
-                <strong>Preventivo</strong>
-                <small>Por kilometraje</small>
+              <div className="flota-resumen-card flota-resumen-vencido">
+                <span>VENCIDOS</span>
+                <strong>{alertasFlotaVencidas.length}</strong>
+                <small>Requieren atención</small>
               </div>
+            </div>
+
+            <div className="flota-alertas-panel">
+              <div className="flota-alertas-header">
+                <div>
+                  <span>SEGUIMIENTO PREVENTIVO</span>
+                  <h3>Mantenimientos que requieren atención</h3>
+                </div>
+
+                <span className="flota-alertas-total">
+                  {alertasFlotaVencidas.length + alertasFlotaProximas.length}
+                </span>
+              </div>
+
+              {alertasFlotaVencidas.length === 0 &&
+              alertasFlotaProximas.length === 0 ? (
+                <div className="flota-alertas-vacio">
+                  <span>✓</span>
+
+                  <div>
+                    <strong>Sin mantenimientos pendientes</strong>
+                    <p>
+                      La flota se encuentra dentro de los kilometrajes
+                      previstos.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flota-alertas-lista">
+                  {[...alertasFlotaVencidas, ...alertasFlotaProximas].map(
+                    (alerta) => (
+                      <div
+                        className="flota-alerta-fila"
+                        key={`${alerta.equipo_id}-${alerta.mantenimiento_id}`}
+                      >
+                        <div className="flota-alerta-vehiculo">
+                          <strong>{alerta.patente}</strong>
+
+                          <span>
+                            {alerta.marca || ""} {alerta.modelo || ""}
+                          </span>
+                        </div>
+
+                        <div className="flota-alerta-tipo">
+                          <span>MANTENIMIENTO</span>
+
+                          <strong>
+                            {TIPOS_MANTENIMIENTO_FLOTA[alerta.tipo]?.nombre ||
+                              alerta.tipo}
+                          </strong>
+                        </div>
+
+                        <div className="flota-alerta-km">
+                          <span>
+                            {Number(alerta.km_restantes) <= 0
+                              ? "EXCEDIDO"
+                              : "FALTAN"}
+                          </span>
+
+                          <strong>
+                            {Math.abs(
+                              Number(alerta.km_restantes),
+                            ).toLocaleString("es-AR")}{" "}
+                            km
+                          </strong>
+                        </div>
+
+                        <span
+                          className={`flota-service-estado ${
+                            alerta.estado === "VENCIDO" ? "vencido" : "proximo"
+                          }`}
+                        >
+                          {alerta.estado}
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flota-lectura-panel">

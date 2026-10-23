@@ -2726,6 +2726,107 @@ app.get("/flota/:id/lecturas", async (req, res) => {
   }
 });
 
+app.get("/flota/alertas", async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      WITH ultimos_mantenimientos AS (
+        SELECT DISTINCT ON (fm.equipo_id, fm.tipo)
+          fm.id,
+          fm.equipo_id,
+          fm.tipo,
+          fm.fecha,
+          fm.kilometraje,
+          fm.frecuencia_km,
+          fm.codigo_repuesto,
+          fm.observaciones
+        FROM flota_mantenimientos fm
+        ORDER BY
+          fm.equipo_id,
+          fm.tipo,
+          fm.fecha DESC,
+          fm.kilometraje DESC,
+          fm.id DESC
+      )
+
+      SELECT
+        e.id AS equipo_id,
+        e.patente,
+        e.marca,
+        e.modelo,
+        COALESCE(e.kilometraje_actual, 0) AS kilometraje_actual,
+
+        um.id AS mantenimiento_id,
+        um.tipo,
+        um.fecha,
+        um.kilometraje AS kilometraje_mantenimiento,
+        um.frecuencia_km,
+        um.codigo_repuesto,
+        um.observaciones,
+
+        (
+          um.kilometraje + um.frecuencia_km
+        ) AS proximo_mantenimiento,
+
+        (
+          (um.kilometraje + um.frecuencia_km)
+          - COALESCE(e.kilometraje_actual, 0)
+        ) AS km_restantes,
+
+        CASE
+          WHEN (
+            (um.kilometraje + um.frecuencia_km)
+            - COALESCE(e.kilometraje_actual, 0)
+          ) <= 0
+            THEN 'VENCIDO'
+
+          WHEN (
+            (um.kilometraje + um.frecuencia_km)
+            - COALESCE(e.kilometraje_actual, 0)
+          ) <= 5000
+            THEN 'PRÓXIMO'
+
+          ELSE 'EN TIEMPO'
+        END AS estado
+
+      FROM equipos e
+
+      INNER JOIN ultimos_mantenimientos um
+        ON um.equipo_id = e.id
+
+      WHERE e.categoria = 'FLOTA'
+
+      ORDER BY
+        CASE
+          WHEN (
+            (um.kilometraje + um.frecuencia_km)
+            - COALESCE(e.kilometraje_actual, 0)
+          ) <= 0
+            THEN 1
+
+          WHEN (
+            (um.kilometraje + um.frecuencia_km)
+            - COALESCE(e.kilometraje_actual, 0)
+          ) <= 5000
+            THEN 2
+
+          ELSE 3
+        END,
+        km_restantes ASC;
+    `);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(
+      "Error al obtener alertas de flota:",
+      error,
+    );
+
+    res.status(500).json({
+      error: "Error al obtener las alertas de flota.",
+    });
+  }
+});
+
 app.get("/flota/:id/mantenimientos", async (req, res) => {
   const { id } = req.params;
 
