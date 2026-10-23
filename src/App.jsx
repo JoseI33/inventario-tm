@@ -1811,10 +1811,7 @@ function App() {
     (alerta) => alerta.estado === "PRÓXIMO",
   );
 
-  const alertasFlotaEnTiempo = alertasFlota.filter(
-    (alerta) => alerta.estado === "EN TIEMPO",
-  );
-
+  
   // Obtener el último service de motor y la última distribución
 
   const ultimoServiceMotor = mantenimientosFlota.find(
