@@ -2546,9 +2546,7 @@ function App() {
 
         {modulo === "inventario" && (
           <main className="panel panel-tabla">
-            <button className="volver" onClick={() => setModulo("inicio")}>
-              ← Volver
-            </button>
+            
 
             <h2>Buscador de inventario</h2>
 
@@ -2562,16 +2560,7 @@ function App() {
 
         {modulo === "equipos-activos" && (
           <main className="panel panel-tabla">
-            <button
-              className="volver"
-              onClick={() => {
-                setMostrarAlertaServices(false);
-                setModulo("inicio");
-              }}
-            >
-              ← Volver
-            </button>
-
+            
             <h2>Equipos actualmente en actividad</h2>
 
             {modulo === "equipos-activos" &&
@@ -2641,7 +2630,7 @@ function App() {
               )}
 
             <div className="tabla-contenedor">
-              <table className="tabla-equipos">
+              <table className="tabla-equipos tabla-equipos-activos">
                 <thead>
                   <tr>
                     <th>Interno</th>
@@ -2875,15 +2864,13 @@ function App() {
 
         {modulo === "equipos-inactivos" && (
           <main className="panel panel-tabla">
-            <button className="volver" onClick={() => setModulo("inicio")}>
-              ← Volver
-            </button>
+            
 
             <h2>Equipos Inactivos</h2>
 
             {equiposInactivos.length > 0 ? (
               <div className="tabla-contenedor">
-                <table className="tabla-equipos">
+                <table className="tabla-equipos tabla-equipos-inactivos">
                   <thead>
                     <tr>
                       <th>Interno</th>
@@ -4545,7 +4532,7 @@ function App() {
 
             {historialEquiposFiltrado.length > 0 ? (
               <div className="tabla-contenedor">
-                <table className="tabla-equipos">
+                <table className="tabla-equipos tabla-historial-equipos">
                   <thead>
                     <tr>
                       <th>Interno</th>
@@ -4628,10 +4615,7 @@ function App() {
 
         {modulo === "nuevo-equipo" && (
           <main className="panel panel-tabla">
-            <button className="volver" onClick={() => setModulo("inicio")}>
-              ← Volver
-            </button>
-
+            
             <h2>Nuevo equipo</h2>
 
             <div className="selector-categoria-equipo">
@@ -5084,10 +5068,7 @@ function App() {
 
         {modulo === "config-mantenimiento" && (
           <main className="panel panel-tabla config-mantenimiento-dashboard">
-            <button className="volver" onClick={() => setModulo("inicio")}>
-              ← Volver
-            </button>
-
+            
             <div className="config-dashboard-header">
               <div>
                 <span className="config-dashboard-etiqueta">MANTENIMIENTO</span>
@@ -5640,10 +5621,7 @@ function App() {
 
         {modulo === "flota" && (
           <main className="panel panel-tabla flota-dashboard">
-            <button className="volver" onClick={() => setModulo("inicio")}>
-              ← Volver
-            </button>
-
+            
             <div className="flota-titulo">
               <div>
                 <span className="flota-etiqueta">GESTIÓN DE VEHÍCULOS</span>
@@ -6696,10 +6674,7 @@ function App() {
 
         {modulo === "equipos" && (
           <main className="panel panel-tabla">
-            <button className="volver" onClick={() => setModulo("inicio")}>
-              ← Volver
-            </button>
-
+            
             <h2>Equipos / Mantenimiento</h2>
 
             <input

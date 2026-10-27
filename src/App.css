@@ -159,8 +159,8 @@ header p {
 }
 
 .panel-tabla {
-  max-width: 100%;
-  width: 100%;
+    width: 100%;
+  max-width: 1500px;
 }
 
 .tabla-equipos th,
@@ -407,7 +407,7 @@ header p {
 /* SIDEBAR */
 
 .sidebar {
-  width: 250px;
+  width: 245px;
   min-height: 100vh;
   background: #18222d;
   color: white;
@@ -684,9 +684,9 @@ header p {
 }
 
 .app-content {
-  margin-left: 250px;
-  padding: 25px 20px;
-  width: calc(100% - 250px);
+  margin-left: 180px;
+  padding: 25px 5px;
+  width: calc(100% - 5px);
   max-width: none;
   box-sizing: border-box;
 }
@@ -806,6 +806,7 @@ header p {
   width: 100%;
   max-width: none;
   margin: 0;
+  padding: 15px 5px;
 }
 
 .btn-plan {
@@ -6262,4 +6263,166 @@ header p {
     grid-template-columns: 1fr;
     gap: 10px;
   }
+}
+
+/* =========================================================
+   TABLA EQUIPOS INACTIVOS
+   ========================================================= */
+
+.tabla-equipos-inactivos {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.tabla-equipos-inactivos th,
+.tabla-equipos-inactivos td {
+  white-space: normal;
+  overflow-wrap: break-word;
+  padding: 12px 6px;
+  font-size: 13px;
+}
+
+/* Interno */
+.tabla-equipos-inactivos th:nth-child(1) {
+  width: 7%;
+}
+
+/* Última empresa */
+.tabla-equipos-inactivos th:nth-child(2) {
+  width: 13%;
+}
+
+/* Fecha baja */
+.tabla-equipos-inactivos th:nth-child(3) {
+  width: 10%;
+}
+
+/* Motivo */
+.tabla-equipos-inactivos th:nth-child(4) {
+  width: 12%;
+}
+
+/* Observaciones */
+.tabla-equipos-inactivos th:nth-child(5) {
+  width: 19%;
+}
+
+/* Ubicación actual */
+.tabla-equipos-inactivos th:nth-child(6) {
+  width: 12%;
+}
+
+/* Hs baja */
+.tabla-equipos-inactivos th:nth-child(7) {
+  width: 8%;
+}
+
+/* Horas trabajadas */
+.tabla-equipos-inactivos th:nth-child(8) {
+  width: 11%;
+}
+
+/* Acción */
+.tabla-equipos-inactivos th:nth-child(9) {
+  width: 8%;
+}
+
+/* =========================================
+   TABLA EQUIPOS ACTIVOS
+   ========================================= */
+
+.tabla-equipos-activos {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.tabla-equipos-activos th,
+.tabla-equipos-activos td {
+  white-space: nowrap;
+  padding: 12px 8px;
+  font-size: 13px;
+}
+
+.tabla-equipos-activos th {
+  font-size: 13px;
+}
+
+/* =========================================
+   TABLA HISTORIAL DE EQUIPOS
+   ========================================= */
+
+.tabla-historial-equipos {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.tabla-historial-equipos th,
+.tabla-historial-equipos td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 11px 5px;
+  font-size: 12px;
+}
+
+/* Interno */
+.tabla-historial-equipos th:nth-child(1) {
+  width: 5%;
+}
+
+/* Empresa */
+.tabla-historial-equipos th:nth-child(2) {
+  width: 9%;
+}
+
+/* Ubicación */
+.tabla-historial-equipos th:nth-child(3) {
+  width: 9%;
+}
+
+/* Inicio */
+.tabla-historial-equipos th:nth-child(4) {
+  width: 8%;
+}
+
+/* Fin */
+.tabla-historial-equipos th:nth-child(5) {
+  width: 8%;
+}
+
+/* Hs inicio */
+.tabla-historial-equipos th:nth-child(6) {
+  width: 7%;
+}
+
+/* Hs fin */
+.tabla-historial-equipos th:nth-child(7) {
+  width: 7%;
+}
+
+/* Hs trabajadas */
+.tabla-historial-equipos th:nth-child(8) {
+  width: 9%;
+}
+
+/* Estado */
+.tabla-historial-equipos th:nth-child(9) {
+  width: 7%;
+}
+
+/* Tipo contrato */
+.tabla-historial-equipos th:nth-child(10) {
+  width: 9%;
+}
+
+/* Motivo baja */
+.tabla-historial-equipos th:nth-child(11) {
+  width: 9%;
+}
+
+/* Observaciones */
+.tabla-historial-equipos th:nth-child(12) {
+  width: 13%;
 }
