@@ -1,6 +1,17 @@
+const path = require("path");
+
+require("dotenv").config({
+  path: path.join(__dirname, ".env"),
+});
+
 const express = require("express");
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
 const pool = require("./db");
+
+const { autenticar, exigirPermiso } = require("./auth");
 
 const app = express();
 
@@ -10,6 +21,134 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("API TM ROLDAN funcionando");
 });
+
+
+app.post("/auth/login", async (req, res) => {
+  try {
+    const email =
+      typeof req.body?.email === "string"
+        ? req.body.email.trim().toLowerCase()
+        : "";
+
+    const password =
+      typeof req.body?.password === "string"
+        ? req.body.password
+        : "";
+
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "Ingresá correo y contraseña.",
+      });
+    }
+
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+      console.error("JWT_SECRET no está configurado correctamente.");
+
+      return res.status(500).json({
+        error: "Error de configuración del servidor.",
+      });
+    }
+
+    app.get("/auth/me", autenticar, (req, res) => {
+  res.json({
+    usuario: req.usuario,
+    permisos: req.permisos,
+  });
+});
+
+    // Buscar el usuario y su rol
+    const resultado = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.nombre,
+        u.email,
+        u.password_hash,
+        u.activo,
+        u.empresa_id,
+        r.id AS rol_id,
+        r.codigo AS rol,
+        e.activo AS empresa_activa
+      FROM usuarios_sistema u
+      JOIN roles r ON r.id = u.rol_id
+      LEFT JOIN empresas_sistema e ON e.id = u.empresa_id
+      WHERE LOWER(u.email) = $1
+      LIMIT 1
+      `,
+      [email]
+    );
+
+    const usuario = resultado.rows[0];
+
+    // Verificar contraseña
+    const claveValida = usuario
+      ? await bcrypt.compare(password, usuario.password_hash)
+      : false;
+
+    if (
+      !usuario ||
+      !claveValida ||
+      usuario.activo !== true ||
+      (usuario.empresa_id !== null && usuario.empresa_activa !== true)
+    ) {
+      return res.status(401).json({
+        error: "Credenciales incorrectas o cuenta no disponible.",
+      });
+    }
+
+    // Consultar los permisos del rol
+    const resultadoPermisos = await pool.query(
+      `
+      SELECT p.codigo
+      FROM rol_permisos rp
+      JOIN permisos p ON p.id = rp.permiso_id
+      WHERE rp.rol_id = $1
+      ORDER BY p.codigo
+      `,
+      [usuario.rol_id]
+    );
+
+    const permisos = resultadoPermisos.rows.map(
+      (permiso) => permiso.codigo
+    );
+
+    // Generar token de acceso
+    const token = jwt.sign(
+      {
+        rol: usuario.rol,
+        empresaId: usuario.empresa_id,
+      },
+      process.env.JWT_SECRET,
+      {
+        subject: String(usuario.id),
+        algorithm: "HS256",
+        issuer: "tmroldan-api",
+        expiresIn: "8h",
+      }
+    );
+
+    res.json({
+      mensaje: "Inicio de sesión correcto.",
+      token,
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email,
+        rol: usuario.rol,
+        empresa_id: usuario.empresa_id,
+      },
+      permisos,
+    });
+
+  } catch (error) {
+    console.error("Error en inicio de sesión:", error);
+
+    res.status(500).json({
+      error: "Error al iniciar sesión.",
+    });
+  }
+});
+
 
 app.get("/equipos", async (req, res) => {
   try {
