@@ -3336,7 +3336,7 @@ function App() {
                   </div>
                 </div>
               )}
-              ;
+              
               <button
                 type="button"
                 className={tipoPendienteVista === "FINCA" ? "activo" : ""}
@@ -6611,7 +6611,7 @@ function App() {
           </main>
         )}
 
-        {vehiculoFlotaSeleccionado && (
+        {modulo === "flota" && vehiculoFlotaSeleccionado && (
           <div className="flota-historial">
             <div className="flota-historial-header">
               <div>
