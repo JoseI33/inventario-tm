@@ -1811,7 +1811,6 @@ function App() {
     (alerta) => alerta.estado === "PRÓXIMO",
   );
 
-  
   // Obtener el último service de motor y la última distribución
 
   const ultimoServiceMotor = mantenimientosFlota.find(
@@ -2546,8 +2545,6 @@ function App() {
 
         {modulo === "inventario" && (
           <main className="panel panel-tabla">
-            
-
             <h2>Buscador de inventario</h2>
 
             <input type="text" placeholder="Ubicación, código o repuesto..." />
@@ -2560,7 +2557,6 @@ function App() {
 
         {modulo === "equipos-activos" && (
           <main className="panel panel-tabla">
-            
             <h2>Equipos actualmente en actividad</h2>
 
             {modulo === "equipos-activos" &&
@@ -2589,36 +2585,39 @@ function App() {
                           key={equipo.interno}
                           className="alerta-service-item"
                         >
-                          <strong>Interno {equipo.interno}</strong>
+                          <strong className="alerta-service-interno">
+                            Interno {equipo.interno}
+                          </strong>
 
-                          {equipo.horas_restantes_estimadas !== null &&
-                            horasEstimadas <= 0 && (
-                              <span className="service-vencido">
-                                ✕ Service estimado vencido por{" "}
-                                {Math.abs(horasEstimadas)} hs
-                              </span>
-                            )}
+                          <div className="alerta-service-mensajes">
+                            {equipo.horas_restantes_estimadas !== null &&
+                              horasEstimadas <= 0 && (
+                                <span className="service-vencido">
+                                  ✕ Service estimado vencido por{" "}
+                                  {Math.abs(horasEstimadas)} hs
+                                </span>
+                              )}
 
-                          {equipo.horas_restantes_estimadas !== null &&
-                            horasEstimadas > 0 &&
-                            horasEstimadas <= 50 && (
-                              <span className="service-proximo">
-                                ⚠ Service estimado en {diasEstimados} días /{" "}
-                                {horasEstimadas} hs
-                              </span>
-                            )}
+                            {equipo.horas_restantes_estimadas !== null &&
+                              horasEstimadas > 0 &&
+                              horasEstimadas <= 50 && (
+                                <span className="service-proximo">
+                                  ⚠ Service estimado en {diasEstimados} días /{" "}
+                                  {horasEstimadas} hs
+                                </span>
+                              )}
 
-                          {equipo.dias_sin_control !== null &&
-                            diasSinControl >= 20 && (
-                              <span className="control-pendiente">
-                                ⚠ Control pendiente — {diasSinControl} días sin
-                                lectura
-                              </span>
-                            )}
+                            {equipo.dias_sin_control !== null &&
+                              diasSinControl >= 20 && (
+                                <span className="control-pendiente">
+                                  ⚠ Control pendiente — {diasSinControl} días
+                                  sin lectura
+                                </span>
+                              )}
+                          </div>
                         </div>
                       );
                     })}
-
                     <button
                       type="button"
                       onClick={() => setMostrarAlertaServices(false)}
@@ -2864,8 +2863,6 @@ function App() {
 
         {modulo === "equipos-inactivos" && (
           <main className="panel panel-tabla">
-            
-
             <h2>Equipos Inactivos</h2>
 
             {equiposInactivos.length > 0 ? (
@@ -3336,7 +3333,7 @@ function App() {
                   </div>
                 </div>
               )}
-              
+
               <button
                 type="button"
                 className={tipoPendienteVista === "FINCA" ? "activo" : ""}
@@ -4615,7 +4612,6 @@ function App() {
 
         {modulo === "nuevo-equipo" && (
           <main className="panel panel-tabla">
-            
             <h2>Nuevo equipo</h2>
 
             <div className="selector-categoria-equipo">
@@ -5068,7 +5064,6 @@ function App() {
 
         {modulo === "config-mantenimiento" && (
           <main className="panel panel-tabla config-mantenimiento-dashboard">
-            
             <div className="config-dashboard-header">
               <div>
                 <span className="config-dashboard-etiqueta">MANTENIMIENTO</span>
@@ -5621,7 +5616,6 @@ function App() {
 
         {modulo === "flota" && (
           <main className="panel panel-tabla flota-dashboard">
-            
             <div className="flota-titulo">
               <div>
                 <span className="flota-etiqueta">GESTIÓN DE VEHÍCULOS</span>
@@ -6674,7 +6668,6 @@ function App() {
 
         {modulo === "equipos" && (
           <main className="panel panel-tabla">
-            
             <h2>Equipos / Mantenimiento</h2>
 
             <input

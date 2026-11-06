@@ -339,14 +339,43 @@ header p {
   text-align: center;
 }
 
+/* FILAS DEL MODAL DE MANTENIMIENTO */
+
 .alerta-service-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 20px;
+  justify-content: flex-start;
+  gap: 12px;
+
+  width: 100%;
+  min-width: 0;
   padding: 12px 0;
+
   border-bottom: 1px solid #ddd;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.alerta-service-item > * {
+  min-width: 0;
+}
+
+/* Identificación del equipo */
+.alerta-service-item > :first-child:not(:last-child) {
+  flex: 0 0 95px;
+}
+
+/* Mensaje del mantenimiento */
+.alerta-service-item > :last-child {
+  flex: 1 1 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+}
+
+/* Si la fila contiene un único elemento */
+.alerta-service-item > :only-child {
+  flex: 1 1 100%;
 }
 
 .alerta-services-modal button {
@@ -407,7 +436,7 @@ header p {
 /* SIDEBAR */
 
 .sidebar {
-  width: 245px;
+  width: 220px;
   min-height: 100vh;
   background: #18222d;
   color: white;
@@ -684,10 +713,11 @@ header p {
 }
 
 .app-content {
-  margin-left: 180px;
-  padding: 25px 5px;
-  width: calc(100% - 5px);
+  margin-left: 220px;
+  width: calc(100% - 220px);
   max-width: none;
+  min-width: 0;
+  padding: 25px 10px;
   box-sizing: border-box;
 }
 
@@ -6425,4 +6455,411 @@ header p {
 /* Observaciones */
 .tabla-historial-equipos th:nth-child(12) {
   width: 13%;
+}
+
+/* =========================================
+   LOGIN - CONTROL TM
+   ========================================= */
+
+.login-pantalla {
+  min-height: 100vh;
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 35px;
+
+  background-image:
+    linear-gradient(
+      110deg,
+      rgba(8, 18, 54, 0.76),
+      rgba(13, 27, 76, 0.7)
+    ),
+    url("./assets/taller.jpg");
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* CONTENEDOR PRINCIPAL */
+
+.login-contenido {
+  width: 100%;
+  max-width: 1150px;
+
+  display: grid;
+  grid-template-columns: 395px minmax(0, 1fr);
+  gap: 85px;
+  align-items: center;
+}
+
+/* FORMULARIO */
+
+.login-panel {
+  width: 100%;
+  padding: 42px 38px;
+
+  background: #ffffff;
+  border-radius: 16px;
+
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.2);
+}
+
+.login-encabezado {
+  margin-bottom: 30px;
+}
+
+.login-encabezado h2 {
+  margin: 0 0 8px;
+  color: #17233c;
+  font-size: 25px;
+  font-weight: 750;
+}
+
+.login-encabezado p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.login-panel label {
+  display: block;
+  margin: 20px 0 8px;
+
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-panel input {
+  display: block;
+
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+
+  border: 1px solid #d1d9e6;
+  border-radius: 7px;
+
+  background: #f1f5fc;
+  color: #17233c;
+
+  font-size: 14px;
+}
+
+.login-panel input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* BOTÓN INGRESAR */
+
+.login-panel button {
+  width: 100%;
+  height: 44px;
+  margin-top: 30px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: #3979ed;
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.login-panel button:hover {
+  background: #2865d5;
+}
+
+.login-panel button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-error {
+  margin-top: 14px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.login-pie {
+  margin-top: 23px;
+  text-align: center;
+}
+
+.login-pie span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+/* PRESENTACIÓN DERECHA */
+
+.login-presentacion {
+  color: #ffffff;
+}
+
+.login-logo {
+  display: block;
+  width: 205px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 30px;
+}
+
+.login-presentacion h1 {
+  margin: 0 0 18px;
+
+  color: #ffffff;
+  font-size: clamp(30px, 3.2vw, 45px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.login-presentacion p {
+  max-width: 500px;
+  margin: 0;
+
+  color: #e2e8f0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.login-presentacion-linea {
+  width: 65px;
+  height: 4px;
+  margin: 28px 0 18px;
+
+  background: #60a5fa;
+  border-radius: 4px;
+}
+
+.login-presentacion > span {
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .login-contenido {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    gap: 0;
+  }
+
+  .login-presentacion {
+    display: none;
+  }
+
+  .login-pantalla {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-panel {
+    padding: 32px 24px;
+  }
+}
+
+/* CONTENIDO PRINCIPAL DEL DASHBOARD */
+
+.app-content .dashboard-main {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  padding: 20px 15px;
+  box-sizing: border-box;
+}
+
+/* PANTALLAS CON TABLAS */
+
+.app-content .panel.panel-tabla {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 15px 5px;
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 70px;
+  }
+
+  .app-content {
+    margin-left: 70px;
+    width: calc(100% - 70px);
+    padding: 15px 8px;
+  }
+}
+
+/* =========================================
+   MODAL - MANTENIMIENTOS PRÓXIMOS
+   ========================================= */
+
+.alerta-services-modal {
+  width: min(650px, calc(100vw - 32px));
+  max-height: 85vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.alerta-service-item {
+  display: grid;
+  grid-template-columns: 95px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 0;
+  border-bottom: 1px solid #ddd;
+
+  white-space: normal;
+}
+
+.alerta-service-item > * {
+  min-width: 0;
+}
+
+/* Mensajes de visitas y services */
+
+.alerta-service-item .service-vencido,
+.alerta-service-item .service-proximo,
+.alerta-service-item .control-pendiente,
+.alerta-service-item span {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+}
+
+/* Adaptación a celulares */
+
+@media (max-width: 480px) {
+  .alerta-services-modal {
+    padding: 18px 14px;
+  }
+
+  .alerta-service-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+
+/* =========================================
+   MODAL - ALERTAS DE MANTENIMIENTO
+   ========================================= */
+
+.alerta-services-modal {
+  width: min(650px, calc(100vw - 32px));
+  max-height: 85vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* FILA POR EQUIPO */
+
+.alerta-service-item {
+  display: grid;
+  grid-template-columns: 95px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+
+  width: 100%;
+  padding: 14px 0;
+  border-bottom: 1px solid #ddd;
+
+  white-space: normal;
+}
+
+/* NÚMERO DE INTERNO */
+
+.alerta-service-interno {
+  padding-top: 8px;
+  font-size: 14px;
+  color: #475569;
+  white-space: nowrap;
+}
+
+/* CONTENEDOR DE MENSAJES */
+
+.alerta-service-mensajes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  min-width: 0;
+  width: 100%;
+}
+
+/* MENSAJES DE SERVICE Y VISITAS */
+
+.alerta-service-mensajes > span {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  padding: 9px 12px;
+  border-radius: 7px;
+
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 480px) {
+  .alerta-service-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .alerta-service-interno {
+    padding-top: 0;
+  }
+}
+
+/* SIDEBAR - OPCIONES EN UNA SOLA LÍNEA */
+
+.sidebar-menu {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.sidebar-item {
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 12px 8px;
+  text-align: left;
+}
+
+@media (min-width: 701px) and (max-width: 1100px) {
+  .sidebar-item {
+    font-size: 11px;
+    padding: 11px 5px;
+  }
+
+  .sidebar-menu {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
 }
