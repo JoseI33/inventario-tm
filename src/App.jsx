@@ -1905,7 +1905,7 @@ function App() {
         return;
       }
 
-      // Actualizamos el kilometraje en el estado general
+      // 1. Actualizar el kilometraje en equipos
       setEquipos((equiposActuales) =>
         equiposActuales.map((equipo) =>
           equipo.id === vehiculoFlotaSeleccionado.id
@@ -1917,10 +1917,28 @@ function App() {
         ),
       );
 
+      // 3. Limpiar el campo
       setKilometrajeFlota("");
 
+      // Actualizar historial
       await cargarLecturasFlota(vehiculoFlotaSeleccionado.id);
 
+      // Actualizar alertas sin refrescar la página
+      await cargarAlertasFlota();
+
+      setMensajeFlota(
+        `✓ Lectura registrada: ${Number(data.kilometraje_actual).toLocaleString(
+          "es-AR",
+        )} km`,
+      );
+
+      // 4. Actualizar el historial
+      await cargarLecturasFlota(vehiculoFlotaSeleccionado.id);
+
+      // 5. Actualizar las alertas automáticamente
+      await cargarAlertasFlota();
+
+      // 6. Mostrar confirmación
       setMensajeFlota(
         `✓ Lectura registrada: ${Number(data.kilometraje_actual).toLocaleString(
           "es-AR",
@@ -2545,7 +2563,7 @@ function App() {
 
         {modulo === "inventario" && (
           <main className="panel panel-tabla">
-            <h2>Buscador de inventario</h2>
+            <h2>Buscador de maquinaria e implementos</h2>
 
             <input type="text" placeholder="Ubicación, código o repuesto..." />
 
