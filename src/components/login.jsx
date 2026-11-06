@@ -1,4 +1,4 @@
-import "./Login.css";
+import "../login.css";
 import logoTM from "../assets/logotm.png";
 import fondoTaller from "../assets/taller.jpg";
 

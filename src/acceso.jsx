@@ -1,6 +1,6 @@
 import { useState } from "react";
 import App from "./App.jsx";
-import Login from "./components/Login.jsx";
+import Login from "./components/login.jsx";
 
 export default function Acceso() {
   const [sesion, setSesion] = useState(null);

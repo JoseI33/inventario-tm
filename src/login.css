@@ -45,7 +45,7 @@ body,
 .login-card h2 {
   margin: 0;
   font-size: 24px;
-  color: #0f2343;
+  color: #c6cacf;
 }
 
 .login-card p {
@@ -104,7 +104,7 @@ body,
 .login-hero {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: left;
   color: white;
   max-width: 700px;
 }
@@ -129,7 +129,7 @@ body,
   line-height: 1.08;
   font-weight: 800;
   text-align: center;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  text-shadow: 0 2px 10px rgba(243, 240, 240, 0.15);
 }
 
 .login-hero p {
@@ -181,4 +181,9 @@ body,
   .login-hero p {
     font-size: 18px;
   }
+}
+
+.login-hero h1,
+.login-presentacion h1 {
+  color: #ffffff !important;
 }
