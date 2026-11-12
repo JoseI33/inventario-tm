@@ -11,7 +11,7 @@ const jwt = require("jsonwebtoken");
 
 const pool = require("./db");
 
-const { autenticar, exigirPermiso } = require("./auth");
+const { autenticar } = require("./auth");
 
 const app = express();
 
@@ -2921,7 +2921,7 @@ app.get("/flota/alertas", async (req, res) => {
           WHEN (
             (um.kilometraje + um.frecuencia_km)
             - COALESCE(e.kilometraje_actual, 0)
-          ) <= 5000
+          ) <= 3000
             THEN 'PRÓXIMO'
 
           ELSE 'EN TIEMPO'
@@ -2945,7 +2945,7 @@ app.get("/flota/alertas", async (req, res) => {
           WHEN (
             (um.kilometraje + um.frecuencia_km)
             - COALESCE(e.kilometraje_actual, 0)
-          ) <= 5000
+          ) <= 3000
             THEN 2
 
           ELSE 3
