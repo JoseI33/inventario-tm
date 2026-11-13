@@ -5919,7 +5919,7 @@ function App() {
                   </span>
                 </div>
 
-                {!ultimoServiceMotor && mostrarNuevoServiceFlota ? (
+                {ultimoServiceMotor && !mostrarNuevoServiceFlota ? (
                   <div className="flota-service-body">
                     <div className="flota-service-metricas">
                       <div className="flota-service-metrica">
@@ -6112,6 +6112,18 @@ function App() {
                           </div>
 
                           <div className="flota-service-acciones">
+                            {mostrarNuevoServiceFlota && (
+                              <button
+                                type="button"
+                                className="cancelar"
+                                onClick={() => {
+                                  setMostrarNuevoServiceFlota(false);
+                                  setMensajeServiceFlota("");
+                                }}
+                              >
+                                Cancelar
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={guardarMantenimientoFlota}
@@ -6237,6 +6249,18 @@ function App() {
                     </div>
 
                     <div className="flota-service-acciones">
+                      {mostrarNuevoServiceFlota && (
+  <button
+    type="button"
+    className="cancelar"
+    onClick={() => {
+      setMostrarNuevoServiceFlota(false);
+      setMensajeServiceFlota("");
+    }}
+  >
+    Cancelar
+  </button>
+)}
                       <button
                         type="button"
                         onClick={guardarServiceFlota}
@@ -7046,11 +7070,16 @@ function App() {
                       <div className="service-sin-registro-icono">!</div>
 
                       <div>
-                        <strong>Sin service registrado</strong>
+                        <strong>
+                          {mostrarNuevoServiceFlota
+                            ? "Registrar nuevo service"
+                            : "Sin service registrado"}
+                        </strong>
 
                         <p>
-                          Este equipo todavía no posee un service de motor
-                          registrado.
+                          {mostrarNuevoServiceFlota
+                            ? "Cargá el mantenimiento realizado. El service anterior quedará en el historial."
+                            : "Cargá el último service realizado para comenzar el seguimiento preventivo."}
                         </p>
                       </div>
                     </div>
