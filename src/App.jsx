@@ -1,6 +1,7 @@
 import "./App.css";
 import { useEffect, useRef, useState } from "react";
 import logoTM from "./assets/logotm.png";
+import WeeklyInspection from "./components/WeeklyInspection.jsx";
 
 const TIPOS_MANTENIMIENTO_FLOTA = {
   SERVICE_MOTOR: {
@@ -2369,6 +2370,14 @@ function App() {
             onClick={() => setModulo("inicio")}
           >
             🏠 Dashboard
+          </button>
+
+          <button
+            type="button"
+            className="sidebar-item"
+            onClick={() => setModulo("relevamiento")}
+          >
+            Relevamiento semanal
           </button>
 
           <button
@@ -5659,6 +5668,12 @@ function App() {
           </main>
         )}
 
+       {modulo === "relevamiento" && (
+  <WeeklyInspection
+    onVolver={() => setModulo("inicio")}
+  />
+)}
+
         {modulo === "flota" && (
           <main className="panel panel-tabla flota-dashboard">
             <div className="flota-titulo">
@@ -6250,17 +6265,17 @@ function App() {
 
                     <div className="flota-service-acciones">
                       {mostrarNuevoServiceFlota && (
-  <button
-    type="button"
-    className="cancelar"
-    onClick={() => {
-      setMostrarNuevoServiceFlota(false);
-      setMensajeServiceFlota("");
-    }}
-  >
-    Cancelar
-  </button>
-)}
+                        <button
+                          type="button"
+                          className="cancelar"
+                          onClick={() => {
+                            setMostrarNuevoServiceFlota(false);
+                            setMensajeServiceFlota("");
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={guardarServiceFlota}

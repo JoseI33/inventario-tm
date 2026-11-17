@@ -3002,6 +3002,666 @@ app.get("/flota/:id/mantenimientos", async (req, res) => {
   }
 });
 
+
+app.post("/equipos/:id/salida-castillo", async (req, res) => {
+  const equipoId = Number(req.params.id);
+  const { fecha_salida, observaciones } = req.body;
+
+  if (!Number.isInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "Equipo inválido.",
+    });
+  }
+
+  if (
+    typeof fecha_salida !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(fecha_salida)
+  ) {
+    return res.status(400).json({
+      error: "Ingresá una fecha de salida válida.",
+    });
+  }
+
+  let cliente;
+
+  try {
+    cliente = await pool.connect();
+    await cliente.query("BEGIN");
+
+    const equipo = await cliente.query(
+      `SELECT id, ubicacion_actual
+       FROM equipos
+       WHERE id = $1
+       FOR UPDATE`,
+      [equipoId],
+    );
+
+    if (equipo.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(404).json({
+        error: "Equipo no encontrado.",
+      });
+    }
+
+    const origen = equipo.rows[0].ubicacion_actual?.trim();
+
+    if (!origen || origen.toUpperCase() === "CASTILLO") {
+      await cliente.query("ROLLBACK");
+      return res.status(400).json({
+        error: "Verificá la ubicación actual del equipo.",
+      });
+    }
+
+    const pendientes = await cliente.query(
+      `SELECT id
+       FROM movimientos_equipos
+       WHERE equipo_id = $1
+         AND fecha_regreso IS NULL`,
+      [equipoId],
+    );
+
+    if (pendientes.rows.length > 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(409).json({
+        error: "El equipo ya tiene un traslado pendiente.",
+      });
+    }
+
+    const resultado = await cliente.query(
+      `INSERT INTO movimientos_equipos
+       (
+         equipo_id,
+         ubicacion_origen,
+         ubicacion_destino,
+         motivo,
+         fecha_salida,
+         observaciones
+       )
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        equipoId,
+        origen,
+        "Castillo",
+        "Pintura completa",
+        fecha_salida,
+        observaciones?.trim() || null,
+      ],
+    );
+
+    await cliente.query(
+      `UPDATE equipos
+       SET ubicacion_actual = $1
+       WHERE id = $2`,
+      ["Castillo", equipoId],
+    );
+
+    await cliente.query("COMMIT");
+
+    res.status(201).json({
+      mensaje: "Salida a Castillo registrada.",
+      ubicacion_actual: "Castillo",
+      movimiento: resultado.rows[0],
+    });
+  } catch (error) {
+    if (cliente) await cliente.query("ROLLBACK");
+    console.error("Error al registrar salida:", error);
+
+    res.status(500).json({
+      error: "No se pudo registrar la salida.",
+    });
+  } finally {
+    if (cliente) cliente.release();
+  }
+});
+
+
+app.patch("/equipos/:id/regreso-castillo", async (req, res) => {
+  const equipoId = Number(req.params.id);
+  const { fecha_regreso } = req.body;
+
+  if (!Number.isInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "Equipo inválido.",
+    });
+  }
+
+  if (
+    typeof fecha_regreso !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(fecha_regreso)
+  ) {
+    return res.status(400).json({
+      error: "Ingresá una fecha de regreso válida.",
+    });
+  }
+
+  let cliente;
+
+  try {
+    cliente = await pool.connect();
+    await cliente.query("BEGIN");
+
+    const equipo = await cliente.query(
+      `SELECT id, ubicacion_actual
+       FROM equipos
+       WHERE id = $1
+       FOR UPDATE`,
+      [equipoId],
+    );
+
+    if (equipo.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(404).json({
+        error: "Equipo no encontrado.",
+      });
+    }
+
+    const resultado = await cliente.query(
+      `SELECT *
+       FROM movimientos_equipos
+       WHERE equipo_id = $1
+         AND UPPER(TRIM(ubicacion_destino)) = 'CASTILLO'
+         AND fecha_regreso IS NULL
+       ORDER BY id DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [equipoId],
+    );
+
+    if (resultado.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(404).json({
+        error: "No existe una salida a Castillo pendiente.",
+      });
+    }
+
+    const movimiento = resultado.rows[0];
+
+    if (
+      String(equipo.rows[0].ubicacion_actual).trim().toUpperCase()
+      !== "CASTILLO"
+    ) {
+      await cliente.query("ROLLBACK");
+      return res.status(409).json({
+        error: "La ubicación actual no coincide con el traslado.",
+      });
+    }
+
+    await cliente.query(
+      `UPDATE movimientos_equipos
+       SET fecha_regreso = $1
+       WHERE id = $2`,
+      [fecha_regreso, movimiento.id],
+    );
+
+    await cliente.query(
+      `UPDATE equipos
+       SET ubicacion_actual = $1
+       WHERE id = $2`,
+      [movimiento.ubicacion_origen, equipoId],
+    );
+
+    await cliente.query("COMMIT");
+
+    res.json({
+      mensaje: "Regreso registrado correctamente.",
+      ubicacion_actual: movimiento.ubicacion_origen,
+    });
+  } catch (error) {
+    if (cliente) await cliente.query("ROLLBACK");
+
+    console.error("Error al registrar regreso:", error);
+
+    res.status(
+      error.code === "23514" ? 400 : 500
+    ).json({
+      error:
+        error.code === "23514"
+          ? "La fecha de regreso no puede ser anterior a la salida."
+          : "No se pudo registrar el regreso.",
+    });
+  } finally {
+    if (cliente) cliente.release();
+  }
+});
+
+
+app.patch("/equipos/:id/regreso-castillo", async (req, res) => {
+  const equipoId = Number(req.params.id);
+  const { fecha_regreso } = req.body;
+
+  if (!Number.isInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "Equipo inválido.",
+    });
+  }
+
+  if (
+    typeof fecha_regreso !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(fecha_regreso)
+  ) {
+    return res.status(400).json({
+      error: "Ingresá una fecha de regreso válida.",
+    });
+  }
+
+  let cliente;
+
+  try {
+    cliente = await pool.connect();
+    await cliente.query("BEGIN");
+
+    const equipo = await cliente.query(
+      `SELECT id, ubicacion_actual
+       FROM equipos
+       WHERE id = $1
+       FOR UPDATE`,
+      [equipoId],
+    );
+
+    if (equipo.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(404).json({
+        error: "Equipo no encontrado.",
+      });
+    }
+
+    const resultado = await cliente.query(
+      `SELECT *
+       FROM movimientos_equipos
+       WHERE equipo_id = $1
+         AND UPPER(TRIM(ubicacion_destino)) = 'CASTILLO'
+         AND fecha_regreso IS NULL
+       ORDER BY id DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [equipoId],
+    );
+
+    if (resultado.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(404).json({
+        error: "No existe una salida a Castillo pendiente.",
+      });
+    }
+
+    const movimiento = resultado.rows[0];
+
+    if (
+      String(equipo.rows[0].ubicacion_actual).trim().toUpperCase()
+      !== "CASTILLO"
+    ) {
+      await cliente.query("ROLLBACK");
+      return res.status(409).json({
+        error: "La ubicación actual no coincide con el traslado.",
+      });
+    }
+
+    await cliente.query(
+      `UPDATE movimientos_equipos
+       SET fecha_regreso = $1
+       WHERE id = $2`,
+      [fecha_regreso, movimiento.id],
+    );
+
+    await cliente.query(
+      `UPDATE equipos
+       SET ubicacion_actual = $1
+       WHERE id = $2`,
+      [movimiento.ubicacion_origen, equipoId],
+    );
+
+    await cliente.query("COMMIT");
+
+    res.json({
+      mensaje: "Regreso registrado correctamente.",
+      ubicacion_actual: movimiento.ubicacion_origen,
+    });
+  } catch (error) {
+    if (cliente) await cliente.query("ROLLBACK");
+
+    console.error("Error al registrar regreso:", error);
+
+    res.status(
+      error.code === "23514" ? 400 : 500
+    ).json({
+      error:
+        error.code === "23514"
+          ? "La fecha de regreso no puede ser anterior a la salida."
+          : "No se pudo registrar el regreso.",
+    });
+  } finally {
+    if (cliente) cliente.release();
+  }
+});
+
+
+/* =========================================
+   RELEVAMIENTO SEMANAL - EQUIPOS EN TALLER
+========================================= */
+
+app.get("/relevamientos/taller/equipos", async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT
+        id,
+        interno,
+        tipo,
+        marca,
+        modelo,
+        ubicacion_actual,
+        estado_actual,
+        horometro_actual,
+        responsable
+      FROM equipos
+      WHERE UPPER(
+        TRIM(COALESCE(ubicacion_actual, ''))
+      ) = 'TALLER'
+      ORDER BY
+        CASE
+          WHEN TRIM(interno) ~ '^[0-9]+$'
+          THEN TRIM(interno)::INTEGER
+        END NULLS LAST,
+        interno
+    `);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error(
+      "Error al obtener equipos del taller:",
+      error
+    );
+
+    res.status(500).json({
+      error: "No se pudieron cargar los equipos del taller.",
+    });
+  }
+});
+
+
+/* =========================================
+   RELEVAMIENTO - INICIAR SEMANA
+========================================= */
+
+app.post("/relevamientos/semanales", async (req, res) => {
+  const { fecha_semana } = req.body;
+
+  if (
+    typeof fecha_semana !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(fecha_semana)
+  ) {
+    return res.status(400).json({
+      error: "Ingresá una fecha válida.",
+    });
+  }
+
+  const fecha = new Date(`${fecha_semana}T00:00:00Z`);
+
+  if (
+    Number.isNaN(fecha.getTime()) ||
+    fecha.toISOString().slice(0, 10) !== fecha_semana ||
+    fecha.getUTCDay() !== 1
+  ) {
+    return res.status(400).json({
+      error: "El relevamiento debe corresponder a un lunes.",
+    });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `
+      INSERT INTO relevamientos_semanales (fecha_semana)
+      VALUES ($1)
+      ON CONFLICT (fecha_semana) DO NOTHING
+      RETURNING id
+      `,
+      [fecha_semana],
+    );
+
+    let id = resultado.rows[0]?.id;
+
+    if (!id) {
+      const existente = await pool.query(
+        `
+        SELECT id
+        FROM relevamientos_semanales
+        WHERE fecha_semana = $1
+        `,
+        [fecha_semana],
+      );
+
+      id = existente.rows[0]?.id;
+    }
+
+    res.status(resultado.rows.length ? 201 : 200).json({
+      id,
+      fecha_semana,
+      mensaje: resultado.rows.length
+        ? "Relevamiento semanal creado correctamente."
+        : "El relevamiento de esa semana ya existe.",
+    });
+  } catch (error) {
+    console.error("Error al crear relevamiento:", error);
+
+    res.status(500).json({
+      error: "No se pudo iniciar el relevamiento.",
+    });
+  }
+});
+
+
+/* =========================================
+   RELEVAMIENTO - GUARDAR ESTADO DE EQUIPO
+========================================= */
+
+app.put(
+  "/relevamientos/semanales/:semanaId/equipos/:equipoId",
+  async (req, res) => {
+    const semanaId = Number(req.params.semanaId);
+    const equipoId = Number(req.params.equipoId);
+
+    const {
+      estado,
+      observacion = "",
+      prioridad = "MEDIA",
+      responsable = "",
+    } = req.body;
+
+    const estadosValidos = [
+      "LISTO",
+      "ALISTAR",
+      "REPARANDO",
+      "PAUSADO",
+      "EN_CONTROL",
+      "ESPERA_REPUESTO",
+      "EXHIBICION",
+      "OTRO",
+    ];
+
+    if (
+      !Number.isSafeInteger(semanaId) ||
+      semanaId <= 0 ||
+      !Number.isSafeInteger(equipoId) ||
+      equipoId <= 0
+    ) {
+      return res.status(400).json({
+        error: "Identificador de semana o equipo inválido.",
+      });
+    }
+
+    if (
+      !estadosValidos.includes(estado) ||
+      !["BAJA", "MEDIA", "ALTA"].includes(prioridad)
+    ) {
+      return res.status(400).json({
+        error: "Estado o prioridad inválidos.",
+      });
+    }
+
+    let cliente;
+
+    try {
+      cliente = await pool.connect();
+      await cliente.query("BEGIN");
+
+      const semana = await cliente.query(
+        "SELECT id FROM relevamientos_semanales WHERE id = $1",
+        [semanaId],
+      );
+
+      if (semana.rows.length === 0) {
+        await cliente.query("ROLLBACK");
+        return res.status(404).json({
+          error: "La semana seleccionada no existe.",
+        });
+      }
+
+      const equipo = await cliente.query(
+        `SELECT id, ubicacion_actual
+         FROM equipos
+         WHERE id = $1
+         FOR UPDATE`,
+        [equipoId],
+      );
+
+      if (equipo.rows.length === 0) {
+        await cliente.query("ROLLBACK");
+        return res.status(404).json({
+          error: "Equipo no encontrado.",
+        });
+      }
+
+      const existente = await cliente.query(
+        `SELECT ubicacion_registrada
+         FROM relevamientos_detalle
+         WHERE relevamiento_id = $1 AND equipo_id = $2`,
+        [semanaId, equipoId],
+      );
+
+      const ubicacionActual =
+        equipo.rows[0].ubicacion_actual?.trim() || "";
+
+      // No permitir incorporar equipos fuera del taller.
+      // Sí permitir corregir registros históricos existentes.
+      if (
+        existente.rows.length === 0 &&
+        ubicacionActual.toUpperCase() !== "TALLER"
+      ) {
+        await cliente.query("ROLLBACK");
+
+        return res.status(409).json({
+          error: "El equipo ya no se encuentra en el taller.",
+        });
+      }
+
+      const resultado = await cliente.query(
+        `INSERT INTO relevamientos_detalle (
+          relevamiento_id,
+          equipo_id,
+          estado,
+          observacion,
+          ubicacion_registrada,
+          responsable,
+          prioridad
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (relevamiento_id, equipo_id)
+        DO UPDATE SET
+          estado = EXCLUDED.estado,
+          observacion = EXCLUDED.observacion,
+          responsable = EXCLUDED.responsable,
+          prioridad = EXCLUDED.prioridad,
+          actualizado_en = NOW()
+        RETURNING *`,
+        [
+          semanaId,
+          equipoId,
+          estado,
+          observacion,
+          ubicacionActual,
+          responsable,
+          prioridad,
+        ],
+      );
+
+      await cliente.query("COMMIT");
+
+      res.json({
+        mensaje: "Control semanal guardado correctamente.",
+        registro: resultado.rows[0],
+      });
+    } catch (error) {
+      if (cliente) await cliente.query("ROLLBACK");
+
+      console.error("Error al guardar relevamiento:", error);
+
+      res.status(500).json({
+        error: "No se pudo guardar el relevamiento.",
+      });
+    } finally {
+      if (cliente) cliente.release();
+    }
+  },
+);
+
+
+/* =========================================
+   RELEVAMIENTO - CONSULTAR DETALLE SEMANAL
+========================================= */
+
+app.get(
+  "/relevamientos/semanales/:semanaId/detalles",
+  async (req, res) => {
+    const semanaId = Number(req.params.semanaId);
+
+    if (!Number.isSafeInteger(semanaId) || semanaId <= 0) {
+      return res.status(400).json({
+        error: "Semana inválida.",
+      });
+    }
+
+    try {
+      const resultado = await pool.query(
+        `SELECT
+          rd.id,
+          rd.relevamiento_id,
+          rd.equipo_id,
+          e.interno,
+          e.tipo,
+          e.marca,
+          e.modelo,
+          rd.estado,
+          rd.observacion,
+          rd.ubicacion_registrada,
+          rd.responsable,
+          rd.prioridad,
+          rd.actualizado_en
+        FROM relevamientos_detalle rd
+        JOIN equipos e ON e.id = rd.equipo_id
+        WHERE rd.relevamiento_id = $1
+        ORDER BY
+          CASE
+            WHEN TRIM(e.interno) ~ '^[0-9]+$'
+            THEN TRIM(e.interno)::INTEGER
+          END NULLS LAST,
+          e.interno`,
+        [semanaId],
+      );
+
+      res.json(resultado.rows);
+    } catch (error) {
+      console.error("Error al consultar relevamiento:", error);
+
+      res.status(500).json({
+        error: "No se pudo consultar el relevamiento.",
+      });
+    }
+  },
+);
+
+
+
+
 app.listen(3000, () => {
   console.log("Servidor funcionando en http://localhost:3000");
 });
