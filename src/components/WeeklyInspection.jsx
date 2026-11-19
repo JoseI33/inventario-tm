@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import "../weeklyInspection.css";
 
@@ -72,10 +71,7 @@ export default function WeeklyInspection({ onVolver }) {
     setError("");
     setMensaje("");
 
-    if (
-      !fechaSemana ||
-      new Date(`${fechaSemana}T12:00:00`).getDay() !== 1
-    ) {
+    if (!fechaSemana || new Date(`${fechaSemana}T12:00:00`).getDay() !== 1) {
       setError("Seleccioná una fecha que corresponda a un lunes.");
       return;
     }
@@ -83,20 +79,15 @@ export default function WeeklyInspection({ onVolver }) {
     setCargando(true);
 
     try {
-      const semana = await consultar(
-        `${API}/relevamientos/semanales`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fecha_semana: fechaSemana }),
-        },
-      );
+      const semana = await consultar(`${API}/relevamientos/semanales`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fecha_semana: fechaSemana }),
+      });
 
       const [listaEquipos, detalles] = await Promise.all([
         consultar(`${API}/relevamientos/taller/equipos`),
-        consultar(
-          `${API}/relevamientos/semanales/${semana.id}/detalles`,
-        ),
+        consultar(`${API}/relevamientos/semanales/${semana.id}/detalles`),
       ]);
 
       const guardados = {};
@@ -167,9 +158,7 @@ export default function WeeklyInspection({ onVolver }) {
         [equipo.id]: resultado.registro,
       }));
 
-      setMensaje(
-        `✓ Control del interno ${equipo.interno} guardado.`,
-      );
+      setMensaje(`✓ Control del interno ${equipo.interno} guardado.`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -178,12 +167,7 @@ export default function WeeklyInspection({ onVolver }) {
   };
 
   const equiposFiltrados = equipos.filter((equipo) => {
-    const texto = [
-      equipo.interno,
-      equipo.tipo,
-      equipo.marca,
-      equipo.modelo,
-    ]
+    const texto = [equipo.interno, equipo.tipo, equipo.marca, equipo.modelo]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -191,9 +175,7 @@ export default function WeeklyInspection({ onVolver }) {
     return texto.includes(busqueda.toLowerCase());
   });
 
-  const revisados = equipos.filter(
-    (equipo) => registros[equipo.id],
-  ).length;
+  const revisados = equipos.filter((equipo) => registros[equipo.id]).length;
 
   const listos = equipos.filter(
     (equipo) => registros[equipo.id]?.estado === "LISTO",
@@ -209,10 +191,16 @@ export default function WeeklyInspection({ onVolver }) {
         ← Volver
       </button>
 
-      <div className="relevamiento-encabezado">
-        <span>CONTROL SEMANAL · TALLER</span>
-        <h2>Relevamiento semanal</h2>
-        <p>Seguimiento del estado de equipos y maquinaria.</p>
+      <div className="weekly-header">
+        <div className="weekly-header-info">
+          <span className="weekly-header-icon">📝</span>
+
+          <div>
+            <span className="weekly-header-label">CONTROL DE TALLER</span>
+            <h2>Relevamiento semanal</h2>
+            <p>Seguimiento de equipos en taller y novedades de la semana</p>
+          </div>
+        </div>
       </div>
 
       <div className="relevamiento-resumen">
@@ -241,30 +229,34 @@ export default function WeeklyInspection({ onVolver }) {
       <section className="relevamiento-seccion">
         <h3>Control del lunes</h3>
 
-        <div className="relevamiento-herramientas">
-          <label>
-            Semana de relevamiento
-            <input
-              type="date"
-              value={fechaSemana}
-              onChange={(e) => {
-                setFechaSemana(e.target.value);
-                setSemanaId(null);
-                setRegistros({});
-                setFormularios({});
-                setMensaje("");
-              }}
-            />
-          </label>
+        
+<div className="weekly-toolbar">
+  <div className="weekly-open-box">
+    <label>
+      Semana de relevamiento
 
-          <button
-            type="button"
-            onClick={abrirSemana}
-            disabled={cargando}
-          >
-            {cargando ? "Cargando..." : "Abrir semana"}
-          </button>
-        </div>
+      <input
+        type="date"
+        value={fechaSemana}
+        onChange={(e) => {
+          setFechaSemana(e.target.value);
+          setSemanaId(null);
+          setRegistros({});
+          setFormularios({});
+          setMensaje("");
+        }}
+      />
+    </label>
+
+    <button
+      type="button"
+      onClick={abrirSemana}
+      disabled={cargando}
+    >
+      {cargando ? "Cargando..." : "Abrir semana"}
+    </button>
+  </div>
+</div>
 
         {mensaje && <p className="relevamiento-exito">{mensaje}</p>}
         {error && <p className="relevamiento-error">{error}</p>}
@@ -287,13 +279,14 @@ export default function WeeklyInspection({ onVolver }) {
                 const registrado = Boolean(registros[equipo.id]);
 
                 return (
-                  <div
-                    className="relevamiento-equipo"
-                    key={equipo.id}
-                  >
+                  <div className="relevamiento-equipo" key={equipo.id}>
                     <div className="relevamiento-equipo-info">
                       <div>
-                        <strong>Interno {equipo.interno}</strong>
+                        <strong>
+  {equipo.interno?.trim()
+    ? `Interno ${equipo.interno}`
+    : `${equipo.tipo || "Equipo"} — Sin interno`}
+</strong>
                         <p>
                           {equipo.marca} {equipo.modelo}
                         </p>
@@ -317,11 +310,7 @@ export default function WeeklyInspection({ onVolver }) {
                         <select
                           value={formulario.estado || ""}
                           onChange={(e) =>
-                            modificarCampo(
-                              equipo.id,
-                              "estado",
-                              e.target.value,
-                            )
+                            modificarCampo(equipo.id, "estado", e.target.value)
                           }
                         >
                           <option value="">Seleccionar estado</option>
@@ -367,36 +356,37 @@ export default function WeeklyInspection({ onVolver }) {
                         />
                       </label>
 
-                      <label>
-                        Responsable
-                        <input
-                          type="text"
-                          placeholder="Mecánico responsable"
-                          value={formulario.responsable || ""}
-                          onChange={(e) =>
-                            modificarCampo(
-                              equipo.id,
-                              "responsable",
-                              e.target.value,
-                            )
-                          }
-                        />
-                      </label>
+                      
+<div className="relevamiento-footer">
+  <label>
+    Responsable
+    <input
+      type="text"
+      placeholder="Mecánico responsable"
+      value={formulario.responsable || ""}
+      onChange={(e) =>
+        modificarCampo(
+          equipo.id,
+          "responsable",
+          e.target.value,
+        )
+      }
+    />
+  </label>
 
-                      <button
-                        type="button"
-                        disabled={
-                          !formulario.estado ||
-                          guardandoId !== null
-                        }
-                        onClick={() => guardarControl(equipo)}
-                      >
-                        {guardandoId === equipo.id
-                          ? "Guardando..."
-                          : registrado
-                            ? "Actualizar control"
-                            : "Guardar control"}
-                      </button>
+  <button
+    type="button"
+    disabled={!formulario.estado || guardandoId !== null}
+    onClick={() => guardarControl(equipo)}
+  >
+    {guardandoId === equipo.id
+      ? "Guardando..."
+      : registrado
+        ? "Actualizar control"
+        : "Guardar control"}
+  </button>
+</div>
+
                     </div>
                   </div>
                 );

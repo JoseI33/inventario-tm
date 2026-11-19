@@ -213,3 +213,147 @@
     width: 100%;
   }
 }
+
+.weekly-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.weekly-header-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.weekly-header-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #e8eef8;
+  color: #1f3b67;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.weekly-header-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #5d6b82;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.weekly-header h2 {
+  margin: 0;
+  font-size: 30px;
+  color: #1e2a3a;
+}
+
+.weekly-header p {
+  margin: 4px 0 0;
+  color: #6c7890;
+  font-size: 15px;
+}
+
+
+/* RELEVAMIENTO - ALINEACIÓN DE FECHA Y BOTÓN */
+
+.weekly-toolbar {
+  display: flex;
+  align-items: center;
+  margin: 18px 0;
+}
+
+/* FECHA Y BOTÓN ALINEADOS */
+
+.relevamiento-panel .weekly-open-box {
+  display: grid;
+  grid-template-columns: 190px 150px;
+  align-items: end;
+  gap: 12px;
+}
+
+.relevamiento-panel .weekly-open-box > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.relevamiento-panel .weekly-open-box input,
+.relevamiento-panel .weekly-open-box > button {
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.relevamiento-panel .weekly-open-box > button {
+  align-self: end;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 480px) {
+  .weekly-open-box {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .weekly-open-box label,
+  .weekly-open-box input,
+  .weekly-open-box button {
+    width: 100%;
+  }
+}
+
+
+/* RELEVAMIENTO - RESPONSABLE Y BOTÓN ALINEADOS */
+
+.relevamiento-panel .relevamiento-footer {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+  width: 100%;
+}
+
+.relevamiento-panel .relevamiento-footer > label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.relevamiento-panel .relevamiento-footer input,
+.relevamiento-panel .relevamiento-footer > button {
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.relevamiento-panel .relevamiento-footer > button {
+  align-self: end;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 600px) {
+  .relevamiento-panel .relevamiento-footer {
+    grid-template-columns: 1fr;
+  }
+}
+
+

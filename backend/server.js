@@ -2175,7 +2175,13 @@ app.get("/equipos/:interno/filtros-especiales", async (req, res) => {
 });
 
 app.put("/equipos/:interno/dar-de-baja", async (req, res) => {
-  const { interno } = req.params;
+   const equipoId = Number(req.params.equipoId);
+
+  if (!Number.isSafeInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "ID de equipo inválido.",
+    });
+  }
 
   const {
     fecha_fin,
@@ -2203,13 +2209,14 @@ app.put("/equipos/:interno/dar-de-baja", async (req, res) => {
     await client.query("BEGIN");
 
     const equipo = await client.query(
-      `
-      SELECT id
-      FROM equipos
-      WHERE interno = $1
-      `,
-      [interno]
-    );
+  `
+  SELECT id, interno, tipo, grupo_numeracion
+  FROM equipos
+  WHERE id = $1
+  FOR UPDATE
+  `,
+  [equipoId]
+);
 
     if (equipo.rows.length === 0) {
       await client.query("ROLLBACK");
@@ -2219,9 +2226,7 @@ app.put("/equipos/:interno/dar-de-baja", async (req, res) => {
       });
     }
 
-    const equipoId = equipo.rows[0].id;
-
-    const contratoActivo = await client.query(
+        const contratoActivo = await client.query(
       `
       SELECT id, horometro_inicio
       FROM contratos_equipos
@@ -2310,10 +2315,11 @@ app.put("/equipos/:interno/dar-de-baja", async (req, res) => {
     await client.query("COMMIT");
 
     res.json({
-      mensaje: `Interno ${interno} dado de baja correctamente.`,
-      contrato: contratoActualizado.rows[0],
-      ubicacion_actual,
-    });
+  mensaje: `Interno ${equipo.rows[0].interno || "Sin interno"} dado de baja correctamente.`,
+  equipo_id: equipoId,
+  contrato: contratoActualizado.rows[0],
+  ubicacion_actual,
+});
   } catch (error) {
     await client.query("ROLLBACK");
 

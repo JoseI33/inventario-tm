@@ -945,62 +945,86 @@ function App() {
     }
   };
 
-  const confirmarBajaEquipo = async () => {
-    if (!equipoBaja) return;
+ 
+const confirmarBajaEquipo = async () => {
+  if (!equipoBaja?.id) {
+    setMensajeBaja("Seleccioná un equipo válido.");
+    return;
+  }
 
-    if (
-      !datosBaja.fecha_fin ||
-      !datosBaja.horometro_fin ||
-      !datosBaja.motivo_baja ||
-      !datosBaja.ubicacion_actual
-    ) {
-      setMensajeBaja("Completá fecha, horómetro, motivo y ubicación.");
+  if (
+    !datosBaja.fecha_fin ||
+    datosBaja.horometro_fin === "" ||
+    datosBaja.horometro_fin === null ||
+    datosBaja.horometro_fin === undefined ||
+    !datosBaja.motivo_baja ||
+    !datosBaja.ubicacion_actual
+  ) {
+    setMensajeBaja(
+      "Completá fecha, horómetro, motivo y ubicación.",
+    );
+    return;
+  }
+
+  const horometroFin = Number(datosBaja.horometro_fin);
+
+  if (!Number.isFinite(horometroFin) || horometroFin < 0) {
+    setMensajeBaja("Ingresá un horómetro válido.");
+    return;
+  }
+
+  try {
+    setMensajeBaja("");
+
+    const response = await fetch(
+      `http://localhost:3000/equipos/id/${equipoBaja.id}/dar-de-baja`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fecha_fin: datosBaja.fecha_fin,
+          horometro_fin: horometroFin,
+          motivo_baja: datosBaja.motivo_baja,
+          ubicacion_actual: datosBaja.ubicacion_actual,
+          observacion_baja: datosBaja.observacion_baja,
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMensajeBaja(
+        data.error || "No se pudo dar de baja el equipo.",
+      );
       return;
     }
 
-    try {
-      const response = await fetch(
-        `http://localhost:3000/equipos/${equipoBaja.interno}/dar-de-baja`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fecha_fin: datosBaja.fecha_fin,
-            horometro_fin: Number(datosBaja.horometro_fin),
-            motivo_baja: datosBaja.motivo_baja,
-            ubicacion_actual: datosBaja.ubicacion_actual,
-            observacion_baja: datosBaja.observacion_baja,
-          }),
-        },
-      );
+    // Actualizar el estado general de equipos
+    await actualizarEstadoEquipos();
 
-      const data = await response.json();
+    // Actualizar el listado de equipos inactivos
+    await cargarEquiposInactivos();
 
-      if (!response.ok) {
-        setMensajeBaja(data.error || "No se pudo dar de baja el equipo.");
-        return;
-      }
+    const internoDadoDeBaja =
+      equipoBaja.interno || "Sin interno";
 
-      await actualizarEstadoEquipos();
+    setMensajeBaja(
+      `Interno ${internoDadoDeBaja} dado de baja correctamente.`,
+    );
 
-      // Volvemos a consultar el backend
-      // para traer el registro completo del inactivo.
-      await cargarEquiposInactivos();
+    setEquipoBaja(null);
+  } catch (error) {
+    console.error(error);
 
-      const internoDadoDeBaja = equipoBaja.interno;
+    setMensajeBaja(
+      "Error al procesar la baja o actualizar los listados.",
+    );
+  }
+};
 
-      setMensajeBaja(
-        `Interno ${internoDadoDeBaja} dado de baja correctamente.`,
-      );
-
-      setEquipoBaja(null);
-    } catch (error) {
-      console.error(error);
-      setMensajeBaja("Error de conexión con el servidor.");
-    }
-  };
 
   const cargarEquiposInactivos = async () => {
     try {
