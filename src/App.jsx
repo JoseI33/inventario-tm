@@ -33,6 +33,7 @@ const TIPOS_MANTENIMIENTO_FLOTA = {
 function App() {
   // CONFIGURACION DE MANTENIMIENTO
   const [configInterno, setConfigInterno] = useState("");
+  const [configEquipoId, setConfigEquipoId] = useState(null);
   const [configPlan, setConfigPlan] = useState("");
   const [configPlanNombre, setConfigPlanNombre] = useState("");
   const [componentesConfig, setComponentesConfig] = useState([]);
@@ -449,21 +450,7 @@ function App() {
       });
   }, []);
 
-  useEffect(() => {
-    if (!interno) return;
-
-    fetch(`http://localhost:3000/equipos/${interno}/horometros`)
-      .then((response) => response.json())
-      .then((data) => {
-        setHistorialHorometros(data);
-      })
-      .catch((error) => {
-        console.error("Error al cargar historial:", error);
-        setHistorialHorometros([]);
-      });
-  }, [interno]);
-
-  const equipoSeleccionado = equipos.find(
+   const equipoSeleccionado = equipos.find(
     (equipo) => String(equipo.interno).trim() === String(interno).trim(),
   );
 
@@ -473,7 +460,39 @@ function App() {
     )
     .sort((a, b) => b.horometro - a.horometro)[0];
 
-  useEffect(() => {
+  const equipoIdSeleccionado = equipoSeleccionado?.id ?? null;
+
+   useEffect(() => {
+  if (!equipoIdSeleccionado) return;
+
+    let cancelado = false;
+
+    fetch(`http://localhost:3000/equipos/id/${equipoIdSeleccionado}/horometros`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Error al consultar historial");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!cancelado) {
+          setHistorialHorometros(data);
+        }
+      })
+      .catch((error) => {
+        if (!cancelado) {
+          console.error(error);
+          setHistorialHorometros([]);
+        }
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [equipoIdSeleccionado]);
+
+ 
+    useEffect(() => {
     if (!interno) return;
 
     fetch(`http://localhost:3000/equipos/${interno}/mantenimientos`)
@@ -532,28 +551,34 @@ function App() {
   };
 
   const actualizarHorometro = async () => {
-    if (!equipoSeleccionado) return;
-
-    if (!nuevoHorometro) {
-      setMensajeHorometro("Ingresá un horómetro.");
+    if (!equipoSeleccionado?.id) {
+      setMensajeHorometro("Seleccioná un equipo válido.");
       return;
     }
 
-    if (!nuevoHorometro || !fechaHorometro) {
+    if (nuevoHorometro === "" || nuevoHorometro === null || !fechaHorometro) {
       setMensajeHorometro("Ingresá la fecha y el horómetro.");
       return;
     }
 
+    const valorHorometro = Number(nuevoHorometro);
+
+    if (!Number.isSafeInteger(valorHorometro) || valorHorometro < 0) {
+      setMensajeHorometro("Ingresá un horómetro válido.");
+      return;
+    }
+
     try {
+      // 1. Actualizar utilizando el ID único del equipo
       const response = await fetch(
-        `http://localhost:3000/equipos/${equipoSeleccionado.interno}/horometro`,
+        `http://localhost:3000/equipos/id/${equipoSeleccionado.id}/horometro`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            horometro: Number(nuevoHorometro),
+            horometro: valorHorometro,
             fecha: fechaHorometro,
           }),
         },
@@ -562,31 +587,59 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        setMensajeHorometro(data.error);
+        setMensajeHorometro(
+          data.error || "No se pudo actualizar el horómetro.",
+        );
         return;
       }
 
+      // 2. Obtener el equipo devuelto por el nuevo backend
+      const equipoActualizado = data.equipo;
+
+      if (!equipoActualizado?.id) {
+        throw new Error("El servidor no devolvió el equipo actualizado.");
+      }
+
+      // 3. Actualizar solamente el equipo con ese ID
       setEquipos((equiposActuales) =>
         equiposActuales.map((equipo) =>
-          equipo.interno === data.interno ? data : equipo,
+          equipo.id === equipoActualizado.id
+            ? { ...equipo, ...equipoActualizado }
+            : equipo,
         ),
       );
 
-      const historialResponse = await fetch(
-        `http://localhost:3000/equipos/${equipoSeleccionado.interno}/horometros`,
-      );
-
-      const historialData = await historialResponse.json();
-
-      await actualizarDatosMantenimiento(equipoSeleccionado.interno);
-
-      setHistorialHorometros(historialData);
-
       setNuevoHorometro("");
       setMensajeHorometro("Horómetro actualizado correctamente.");
+
+      // 4. Actualizar los datos relacionados
+      try {
+        const historialResponse = await fetch(
+          `http://localhost:3000/equipos/id/${equipoSeleccionado.id}/horometros`,
+        );
+
+        if (!historialResponse.ok) {
+          throw new Error("No se pudo cargar el historial.");
+        }
+
+        const historialData = await historialResponse.json();
+
+        setHistorialHorometros(historialData);
+
+        await actualizarDatosMantenimiento(equipoSeleccionado.interno);
+      } catch (error) {
+        console.error("Error al refrescar datos del equipo:", error);
+
+        setMensajeHorometro(
+          "Horómetro guardado, pero no se pudieron actualizar todos los datos de pantalla.",
+        );
+      }
     } catch (error) {
-      console.error(error);
-      setMensajeHorometro("No se pudo actualizar el horómetro.");
+      console.error("Error al actualizar horómetro:", error);
+
+      setMensajeHorometro(
+        "No se pudo completar la actualización del horómetro.",
+      );
     }
   };
 
@@ -945,86 +998,77 @@ function App() {
     }
   };
 
- 
-const confirmarBajaEquipo = async () => {
-  if (!equipoBaja?.id) {
-    setMensajeBaja("Seleccioná un equipo válido.");
-    return;
-  }
-
-  if (
-    !datosBaja.fecha_fin ||
-    datosBaja.horometro_fin === "" ||
-    datosBaja.horometro_fin === null ||
-    datosBaja.horometro_fin === undefined ||
-    !datosBaja.motivo_baja ||
-    !datosBaja.ubicacion_actual
-  ) {
-    setMensajeBaja(
-      "Completá fecha, horómetro, motivo y ubicación.",
-    );
-    return;
-  }
-
-  const horometroFin = Number(datosBaja.horometro_fin);
-
-  if (!Number.isFinite(horometroFin) || horometroFin < 0) {
-    setMensajeBaja("Ingresá un horómetro válido.");
-    return;
-  }
-
-  try {
-    setMensajeBaja("");
-
-    const response = await fetch(
-      `http://localhost:3000/equipos/id/${equipoBaja.id}/dar-de-baja`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fecha_fin: datosBaja.fecha_fin,
-          horometro_fin: horometroFin,
-          motivo_baja: datosBaja.motivo_baja,
-          ubicacion_actual: datosBaja.ubicacion_actual,
-          observacion_baja: datosBaja.observacion_baja,
-        }),
-      },
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMensajeBaja(
-        data.error || "No se pudo dar de baja el equipo.",
-      );
+  const confirmarBajaEquipo = async () => {
+    if (!equipoBaja?.id) {
+      setMensajeBaja("Seleccioná un equipo válido.");
       return;
     }
 
-    // Actualizar el estado general de equipos
-    await actualizarEstadoEquipos();
+    if (
+      !datosBaja.fecha_fin ||
+      datosBaja.horometro_fin === "" ||
+      datosBaja.horometro_fin === null ||
+      datosBaja.horometro_fin === undefined ||
+      !datosBaja.motivo_baja ||
+      !datosBaja.ubicacion_actual
+    ) {
+      setMensajeBaja("Completá fecha, horómetro, motivo y ubicación.");
+      return;
+    }
 
-    // Actualizar el listado de equipos inactivos
-    await cargarEquiposInactivos();
+    const horometroFin = Number(datosBaja.horometro_fin);
 
-    const internoDadoDeBaja =
-      equipoBaja.interno || "Sin interno";
+    if (!Number.isFinite(horometroFin) || horometroFin < 0) {
+      setMensajeBaja("Ingresá un horómetro válido.");
+      return;
+    }
 
-    setMensajeBaja(
-      `Interno ${internoDadoDeBaja} dado de baja correctamente.`,
-    );
+    try {
+      setMensajeBaja("");
 
-    setEquipoBaja(null);
-  } catch (error) {
-    console.error(error);
+      const response = await fetch(
+        `http://localhost:3000/equipos/id/${equipoBaja.id}/dar-de-baja`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fecha_fin: datosBaja.fecha_fin,
+            horometro_fin: horometroFin,
+            motivo_baja: datosBaja.motivo_baja,
+            ubicacion_actual: datosBaja.ubicacion_actual,
+            observacion_baja: datosBaja.observacion_baja,
+          }),
+        },
+      );
 
-    setMensajeBaja(
-      "Error al procesar la baja o actualizar los listados.",
-    );
-  }
-};
+      const data = await response.json();
 
+      if (!response.ok) {
+        setMensajeBaja(data.error || "No se pudo dar de baja el equipo.");
+        return;
+      }
+
+      // Actualizar el estado general de equipos
+      await actualizarEstadoEquipos();
+
+      // Actualizar el listado de equipos inactivos
+      await cargarEquiposInactivos();
+
+      const internoDadoDeBaja = equipoBaja.interno || "Sin interno";
+
+      setMensajeBaja(
+        `Interno ${internoDadoDeBaja} dado de baja correctamente.`,
+      );
+
+      setEquipoBaja(null);
+    } catch (error) {
+      console.error(error);
+
+      setMensajeBaja("Error al procesar la baja o actualizar los listados.");
+    }
+  };
 
   const cargarEquiposInactivos = async () => {
     try {
@@ -1993,11 +2037,22 @@ const confirmarBajaEquipo = async () => {
       : [];
 
   const seleccionarEquipoConfig = async (equipo) => {
-    const internoSeleccionado = String(equipo.interno);
+    const equipoId = Number(equipo.id);
+    const internoSeleccionado = String(equipo.interno ?? "");
 
+    if (!Number.isSafeInteger(equipoId) || equipoId <= 0) {
+      console.error("El equipo seleccionado no tiene un ID válido.");
+      return;
+    }
+
+    // Guardar el ID único del equipo
+    setConfigEquipoId(equipoId);
+
+    // Conservar el interno para mostrarlo en pantalla
     setBusquedaInternoConfig(internoSeleccionado);
     setConfigInterno(internoSeleccionado);
 
+    // Limpiar la configuración anterior
     setConfigPlan("");
     setConfigPlanNombre("");
     setComponentesConfig([]);
@@ -2006,9 +2061,10 @@ const confirmarBajaEquipo = async () => {
     setPlanSeleccionado("");
 
     try {
+      // Consulta GET antigua: temporalmente por interno
       const response = await fetch(
-        `http://localhost:3000/equipos/${internoSeleccionado}/plan-mantenimiento`,
-      );
+  `http://localhost:3000/equipos/id/${equipoId}/plan-mantenimiento`
+);
 
       const data = await response.json();
 
@@ -5180,9 +5236,9 @@ const confirmarBajaEquipo = async () => {
                       onChange={(e) => {
                         setBusquedaInternoConfig(e.target.value);
 
-                        if (configInterno) {
+                        if (configInterno || configEquipoId) {
+                          setConfigEquipoId(null);
                           setConfigInterno("");
-                          setConfigPlan("");
                           setConfigPlanNombre("");
                           setComponentesConfig([]);
                           setConfigComponentes({});
@@ -5297,8 +5353,13 @@ const confirmarBajaEquipo = async () => {
                               try {
                                 setMensajeConfiguracion("Asignando plan...");
 
+                                if (!configEquipoId) {
+                                  console.error("Seleccioná un equipo válido.");
+                                  return;
+                                }
+
                                 const response = await fetch(
-                                  `http://localhost:3000/equipos/${configInterno}/plan-mantenimiento`,
+                                  `http://localhost:3000/equipos/id/${configEquipoId}/plan-mantenimiento`,
                                   {
                                     method: "PUT",
                                     headers: {
@@ -5692,11 +5753,9 @@ const confirmarBajaEquipo = async () => {
           </main>
         )}
 
-       {modulo === "relevamiento" && (
-  <WeeklyInspection
-    onVolver={() => setModulo("inicio")}
-  />
-)}
+        {modulo === "relevamiento" && (
+          <WeeklyInspection onVolver={() => setModulo("inicio")} />
+        )}
 
         {modulo === "flota" && (
           <main className="panel panel-tabla flota-dashboard">

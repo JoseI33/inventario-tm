@@ -305,6 +305,142 @@ app.put("/equipos/:interno/horometro", async (req, res) => {
   }
 });
 
+
+/* =========================================
+   ACTUALIZAR HORÓMETRO POR ID DE EQUIPO
+========================================= */
+
+app.put("/equipos/id/:equipoId/horometro", async (req, res) => {
+  const equipoId = Number(req.params.equipoId);
+  const { horometro, fecha } = req.body;
+
+  if (!Number.isSafeInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "ID de equipo inválido.",
+    });
+  }
+
+  if (
+    horometro === "" ||
+    horometro === null ||
+    horometro === undefined ||
+    !fecha
+  ) {
+    return res.status(400).json({
+      error: "Horómetro y fecha son obligatorios.",
+    });
+  }
+
+  const nuevoHorometro = Number(horometro);
+
+  if (
+    !Number.isSafeInteger(nuevoHorometro) ||
+    nuevoHorometro < 0
+  ) {
+    return res.status(400).json({
+      error: "El horómetro ingresado no es válido.",
+    });
+  }
+
+  let client;
+
+  try {
+    client = await pool.connect();
+
+    await client.query("BEGIN");
+
+    // Buscar por ID único, no por interno
+    const equipoActual = await client.query(
+      `
+      SELECT id, interno, horometro_actual
+      FROM equipos
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [equipoId],
+    );
+
+    if (equipoActual.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Equipo no encontrado.",
+      });
+    }
+
+        // Buscar el último horómetro registrado
+    const ultimoRegistro = await client.query(
+      `
+      SELECT horometro, fecha
+      FROM horometros
+      WHERE equipo_id = $1
+      ORDER BY fecha DESC, id DESC
+      LIMIT 1
+      `,
+      [equipoId],
+    );
+
+    if (ultimoRegistro.rows.length > 0) {
+      const ultimoHorometro = Number(
+        ultimoRegistro.rows[0].horometro,
+      );
+
+      if (nuevoHorometro < ultimoHorometro) {
+        await client.query("ROLLBACK");
+
+        return res.status(400).json({
+          error:
+            `El nuevo horómetro no puede ser menor al último registrado (${ultimoHorometro} hs).`,
+        });
+      }
+    }
+
+    // Guardar el historial del equipo correcto
+    await client.query(
+      `
+      INSERT INTO horometros (
+        equipo_id,
+        fecha,
+        horometro
+      )
+      VALUES ($1, $2, $3)
+      `,
+      [equipoId, fecha, nuevoHorometro],
+    );
+
+    // Actualizar el horómetro del equipo
+    const resultado = await client.query(
+      `
+      UPDATE equipos
+      SET horometro_actual = $1
+      WHERE id = $2
+      RETURNING *
+      `,
+      [nuevoHorometro, equipoId],
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      mensaje: "Horómetro actualizado correctamente.",
+      equipo: resultado.rows[0],
+    });
+  } catch (error) {
+    if (client) {
+      await client.query("ROLLBACK").catch(console.error);
+    }
+
+    console.error("Error al actualizar horómetro:", error);
+
+    res.status(500).json({
+      error: "Error al actualizar horómetro.",
+    });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+
 app.put("/equipos/:interno/plan-mantenimiento", async (req, res) => {
   const { interno } = req.params;
   const { plan_id } = req.body;
@@ -325,7 +461,7 @@ app.put("/equipos/:interno/plan-mantenimiento", async (req, res) => {
         error: "Equipo no encontrado",
       });
     }
-
+   
     res.json(resultado.rows[0]);
   } catch (error) {
     console.error(error);
@@ -335,6 +471,59 @@ app.put("/equipos/:interno/plan-mantenimiento", async (req, res) => {
     });
   }
 });
+
+
+/* =========================================
+   ACTUALIZAR PLAN DE MANTENIMIENTO POR ID
+========================================= */
+
+app.put("/equipos/id/:equipoId/plan-mantenimiento", async (req, res) => {
+  const equipoId = Number(req.params.equipoId);
+  const { plan_id } = req.body;
+
+  if (!Number.isSafeInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "ID de equipo inválido.",
+    });
+  }
+
+  if (plan_id === undefined) {
+    return res.status(400).json({
+      error: "Debés indicar el plan de mantenimiento.",
+    });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `
+      UPDATE equipos
+      SET plan_mantenimiento_id = $1
+      WHERE id = $2
+      RETURNING *
+      `,
+      [plan_id, equipoId]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({
+        error: "Equipo no encontrado.",
+      });
+    }
+
+    res.json(resultado.rows[0]);
+
+  } catch (error) {
+    console.error(
+      "Error al actualizar plan de mantenimiento:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Error al actualizar plan de mantenimiento.",
+    });
+  }
+});
+
 
 // MARCAR PENDIENTE COMO EN PROCESO
 app.put("/pendientes/:id/en-proceso", async (req, res) => {
@@ -1348,6 +1537,74 @@ app.get("/equipos/:interno/plan-mantenimiento", async (req, res) => {
     });
   }
 });
+
+
+/* =========================================
+   CONSULTAR PLAN DE MANTENIMIENTO POR ID
+========================================= */
+
+app.get("/equipos/id/:equipoId/plan-mantenimiento", async (req, res) => {
+  const equipoId = Number(req.params.equipoId);
+
+  if (!Number.isSafeInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "ID de equipo inválido.",
+    });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        e.id AS equipo_id,
+        e.interno,
+
+        p.id AS plan_id,
+        p.nombre AS plan,
+
+        c.id AS componente_id,
+        c.nombre AS componente,
+        c.codigo,
+
+        pc.frecuencia_horas,
+        pc.cantidad,
+        pc.unidad,
+        pc.opcional
+
+      FROM equipos e
+
+      JOIN planes_mantenimiento p
+        ON p.id = e.plan_mantenimiento_id
+
+      JOIN plan_componentes pc
+        ON pc.plan_id = p.id
+
+      JOIN componentes_mantenimiento c
+        ON c.id = pc.componente_id
+
+      WHERE e.id = $1
+
+      ORDER BY
+        pc.frecuencia_horas,
+        c.nombre
+      `,
+      [equipoId]
+    );
+
+    res.json(resultado.rows);
+
+  } catch (error) {
+    console.error(
+      "Error al consultar plan de mantenimiento:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Error al consultar el plan de mantenimiento.",
+    });
+  }
+});
+
 
 app.get("/equipos/:interno/mantenimientos", async (req, res) => {
   const { interno } = req.params;
@@ -3004,6 +3261,40 @@ app.get("/flota/:id/mantenimientos", async (req, res) => {
 
     res.status(500).json({
       error: "Error al obtener los mantenimientos.",
+    });
+  }
+});
+
+
+app.get("/equipos/id/:equipoId/horometros", async (req, res) => {
+  const equipoId = Number(req.params.equipoId);
+
+  if (!Number.isSafeInteger(equipoId) || equipoId <= 0) {
+    return res.status(400).json({
+      error: "ID de equipo inválido.",
+    });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `
+      SELECT
+        h.id,
+        h.fecha,
+        h.horometro
+      FROM horometros h
+      WHERE h.equipo_id = $1
+      ORDER BY h.fecha DESC, h.id DESC
+      `,
+      [equipoId]
+    );
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error al consultar horómetros:", error);
+
+    res.status(500).json({
+      error: "Error al consultar historial de horómetros.",
     });
   }
 });
